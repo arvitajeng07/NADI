@@ -354,8 +354,9 @@ if st.session_state.page == "input":
                     unsafe_allow_html=True
                 )
             else:
-                st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
-                render_normal_html()
+                 render_normal_html()
+                 st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
+
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
@@ -455,8 +456,9 @@ if st.session_state.page == "personal":
                 unsafe_allow_html=True
             )
         else:
-            st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
-            render_normal_html()
+              render_normal_html()        # tampilkan popup lebih dulu
+              st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
+
 
         # prediksi text
         if pred_s is not None:
