@@ -151,13 +151,20 @@ def warning_popup():
     .popup-root {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(8px);
+      background: rgba(0,0,0,0);
+      backdrop-filter: blur(0px);
+      animation: fadeBG 0.4s forwards;
       display:flex;
       align-items:center;
       justify-content:center;
       z-index:999999 !important;
     }
+
+    @keyframes fadeBG {
+      0% { background: rgba(0,0,0,0); backdrop-filter: blur(0px); }
+      100% { background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); }
+    }
+
     .popup-box {
       width:520px;
       background:linear-gradient(135deg,#ff4444,#b00000);
@@ -165,20 +172,36 @@ def warning_popup():
       padding:40px;
       color:white;
       text-align:center;
-      animation:popin .35s ease-out;
+      animation:popin .35s ease-out, shake 0.4s ease-in-out 0.35s;
       box-shadow:0 25px 55px rgba(0,0,0,0.5);
     }
+
+    @keyframes popin {
+      0% {transform:scale(.4); opacity:0;}
+      60% {transform:scale(1.15); opacity:1;}
+      100% {transform:scale(1); opacity:1;}
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      50% { transform: translateX(12px); }
+      75% { transform: translateX(-8px); }
+      100% { transform: translateX(0); }
+    }
+
     .icon {
       font-size:90px;
       margin-bottom:10px;
-      text-shadow:0 0 15px rgba(255,0,0,0.7);
+      animation: glow 1s infinite alternate;
     }
-    @keyframes popin {
-      0% {transform:scale(.5); opacity:0;}
-      60% {transform:scale(1.1); opacity:1;}
-      100% {transform:scale(1); opacity:1;}
+
+    @keyframes glow {
+      from { filter: drop-shadow(0 0 5px #ff9090); }
+      to   { filter: drop-shadow(0 0 20px #ff1e1e); }
     }
     </style>
+
     <div class="popup-root" id="popup-root">
       <div class="popup-box">
         <div class="icon">🚨</div>
@@ -186,14 +209,16 @@ def warning_popup():
         <p style="font-size:20px; margin-top:6px;">Hipertensi / Hipotensi Terdeteksi.</p>
       </div>
     </div>
+
     <script>
     setTimeout(() => {
         let x = document.getElementById("popup-root");
         if (x) x.remove();
-    }, 1700);
+    }, 1900);
     </script>
     """
     components.html(html, height=0, width=0, scrolling=False)
+
 
 
 def normal_popup():
@@ -201,33 +226,80 @@ def normal_popup():
     <style>
     .green-root {
       position:fixed; inset:0;
-      background:rgba(0,0,0,0.55);
-      backdrop-filter:blur(6px);
+      background:rgba(0,0,0,0);
+      backdrop-filter:blur(0px);
+      animation: fadeBG 0.4s forwards;
       display:flex;
       justify-content:center;
       align-items:center;
       z-index:999999 !important;
     }
+
+    @keyframes fadeBG {
+      0% { background: rgba(0,0,0,0); backdrop-filter: blur(0px); }
+      100% { background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); }
+    }
+
     .green-box {
       background:linear-gradient(135deg,#00b35a,#38ff9f);
       padding:44px 50px;
       border-radius:22px;
       text-align:center;
       color:white;
-      animation:zoomIn .4s ease-out;
+      animation: bounceIn 0.5s ease-out;
       box-shadow:0 0 30px rgba(0,0,0,0.45);
+      position: relative;
     }
-    @keyframes zoomIn {
-      from {transform:scale(.5); opacity:0;}
-      to {transform:scale(1); opacity:1;}
+
+    @keyframes bounceIn {
+      0% { transform:scale(0.3); opacity:0; }
+      60% { transform:scale(1.15); opacity:1; }
+      100% { transform:scale(1); opacity:1; }
+    }
+
+    .green-icon {
+      font-size:80px;
+      margin-bottom:10px;
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform:scale(1); }
+      50% { transform:scale(1.12); }
+      100% { transform:scale(1); }
+    }
+
+    /* sparkles */
+    .sparkle {
+      position:absolute;
+      width:10px;
+      height:10px;
+      background:white;
+      border-radius:50%;
+      opacity:0;
+      animation: sparkleAnim 1.6s infinite;
+    }
+
+    .sparkle:nth-child(1) { top:10px; left:20px; animation-delay:0s; }
+    .sparkle:nth-child(2) { top:50px; right:18px; animation-delay:0.3s; }
+    .sparkle:nth-child(3) { bottom:15px; left:40px; animation-delay:0.6s; }
+
+    @keyframes sparkleAnim {
+      0% { opacity:0; transform:scale(0.4); }
+      50% { opacity:1; transform:scale(1.2); }
+      100%{ opacity:0; transform:scale(0.4); }
     }
     </style>
 
     <div class="green-root" id="green-pop">
        <div class="green-box">
-         <div style="font-size:80px; margin-bottom:10px; filter:drop-shadow(0 0 10px #00ff99);">✔️</div>
+         <div class="green-icon">✔️</div>
          <h2 style="font-size:30px; margin:0; font-weight:900;">DATAMU NORMAL</h2>
          <p style="font-size:20px; opacity:0.95;">Jaga kesehatan ya!!! 💚✨</p>
+
+         <div class="sparkle"></div>
+         <div class="sparkle"></div>
+         <div class="sparkle"></div>
        </div>
     </div>
 
@@ -235,10 +307,11 @@ def normal_popup():
     setTimeout(() => {
         let x = document.getElementById("green-pop");
         if (x) x.remove();
-    }, 1600);
+    }, 2000);
     </script>
     """
     components.html(html, height=0, width=0, scrolling=False)
+
 # ============================================================
 # ====================   BERANDA / LANDING   =================
 # ============================================================
