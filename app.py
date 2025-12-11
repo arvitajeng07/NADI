@@ -45,7 +45,6 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-
     :root{
       --bg1: #f3f9ff;
       --bg2: #eaf6ff;
@@ -487,43 +486,43 @@ if st.session_state.page == "personal":
         ax.legend()
         st.pyplot(fig)
 
-       # jika data terakhir anomali → popup merah + sirine
-if dfp["Anom_Total"].iloc[-1]:
-    st.error("⚠️ Terdeteksi hipertensi / hipotensi pada data terakhir!")
+               # jika data terakhir anomali → popup merah + sirine
+        if dfp["Anom_Total"].iloc[-1]:
+            st.error("⚠️ Terdeteksi hipertensi / hipotensi pada data terakhir!")
 
-    # popup merah dramatic (HTML)
-    render_dramatic_html()
+            # popup merah dramatic (HTML)
+            warning_popup()
 
-    # bunyi sirine singkat (0.8s, tanpa loop)
-    wav = generate_siren_wav()
-    datauri = wav_bytes_to_datauri(wav)
-    st.markdown(
-        f"""
-        <audio autoplay>
-            <source src="{datauri}" type="audio/wav">
-        </audio>
-        """,
-        unsafe_allow_html=True
-    )
+            # bunyi sirine singkat
+            wav = generate_siren_wav()
+            datauri = wav_bytes_to_datauri(wav)
+            st.markdown(
+                f"""
+                <audio autoplay>
+                    <source src="{datauri}" type="audio/wav">
+                </audio>
+                """,
+                unsafe_allow_html=True
+            )
 
-else:
-    # data normal → popup hijau + bunyi 'tring'
-    st.success("✔ Datamu normal. Jaga Kesehatann yaa!!!")
+        else:
+            # data normal → popup hijau + bunyi 'tring'
+            st.success("✔ Datamu normal. Jaga kesehatan yaa!")
 
-    # popup normal dramatic (HTML)
-    render_normal_popup()
+            # popup normal dramatic (HTML)
+            normal_popup()
 
-    # bunyi singkat 'tring'
-    wav = generate_ting_wav()
-    datauri = wav_bytes_to_datauri(wav)
-    st.markdown(
-        f"""
-        <audio autoplay>
-            <source src="{datauri}" type="audio/wav">
-        </audio>
-        """,
-        unsafe_allow_html=True
-    )
+            # bunyi tring
+            wav = generate_ting_wav()
+            datauri = wav_bytes_to_datauri(wav)
+            st.markdown(
+                f"""
+                <audio autoplay>
+                    <source src="{datauri}" type="audio/wav">
+                </audio>
+                """,
+                unsafe_allow_html=True
+            )
 
         # tampilkan prediksi singkat
         if pred_s is not None:
