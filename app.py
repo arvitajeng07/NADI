@@ -3,7 +3,7 @@
 APP.PY FINAL — NADI (RK4) with dramatic popup + siren overlay
 Style: Soft Aesthetic Blue
 Features:
- - Landing page (tombol navigasi)
+ - Landing page (tombol navigasi, no sidebar)
  - Upload CSV/XLSX analysis (multi-patient) -> RK4 -> anomaly detection -> dramatic popup -> siren overlay
  - Personal input (1-10 data) -> RK4 -> anomaly detection -> dramatic popup -> siren overlay
  - Hasil Analisis (last result)
@@ -250,30 +250,38 @@ def render_siren_overlay(audio_datauri, title_text="PERINGATAN: Anomali Tensi Te
     components.html(html, height=150)
 
 # -----------------------
-# NAV: BERANDA (tombol)
+# NAV: BERANDA (tombol) - FIXED to use st.button() for navigation
 # -----------------------
 if st.session_state.page == "beranda":
     st.markdown("<div class='big-nadi-title'>✨ NADI : Numeric Analysis of Diastolic & Systolic</div>", unsafe_allow_html=True)
     st.markdown("<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>Namun, <b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>", unsafe_allow_html=True)
 
-    # two main tiles
+    # two main tiles (use Streamlit buttons now)
     c1, c2 = st.columns(2)
+
     with c1:
-        st.markdown('<div class="glass"><h3 style="color:var(--primary-1)">Input Data (Puskesmas / Klinik)</h3><p style="color:var(--muted)">Untuk analisis populasi: upload CSV/XLSX berisi banyak pasien. Sistem akan memproses tiap pasien, menandai anomali, dan memprediksi tekanan berikutnya.</p><div class="spacer"></div><div><button class="cta-btn" onclick="(function(){window.dispatchEvent(new CustomEvent(\'setPage\', {detail:\'input\'}));})()">Masuk ke Input Data</button></div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass"><h3 style="color:var(--primary-1)">Input Data (Puskesmas / Klinik)</h3><p style="color:var(--muted)">Untuk analisis populasi: upload CSV/XLSX berisi banyak pasien. Sistem akan memproses tiap pasien, menandai anomali, dan memprediksi tekanan berikutnya.</p><div class="spacer"></div>', unsafe_allow_html=True)
+        if st.button("➡ Masuk ke Input Data", key="btn_input"):
+            st.session_state.page = "input"
+        st.markdown("</div>", unsafe_allow_html=True)
+
     with c2:
-        st.markdown('<div class="glass"><h3 style="color:var(--primary-1)">Analisis Personal</h3><p style="color:var(--muted)">Untuk analisis personal: input sampai 10 data tensi untuk prediksi dan deteksi anomali.</p><div class="spacer"></div><div><button class="cta-btn" onclick="(function(){window.dispatchEvent(new CustomEvent(\'setPage\', {detail:\'personal\'}));})()">Masuk ke Personal</button></div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass"><h3 style="color:var(--primary-1)">Analisis Personal</h3><p style="color:var(--muted)">Untuk analisis personal: input sampai 10 data tensi untuk prediksi dan deteksi anomali.</p><div class="spacer"></div>', unsafe_allow_html=True)
+        if st.button("➡ Masuk ke Personal", key="btn_personal"):
+            st.session_state.page = "personal"
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.write("")
     # extra horizontal buttons
     col_a, col_b, col_c = st.columns([1,1,1])
     with col_a:
-        if st.button("📊 Lihat Hasil Analisis Terakhir"):
+        if st.button("📊 Lihat Hasil Analisis Terakhir", key="btn_hasil"):
             st.session_state.page = "hasil"
     with col_b:
-        if st.button("❔ Mengapa RK4?"):
+        if st.button("❔ Mengapa RK4?", key="btn_rk4"):
             st.session_state.page = "rk4info"
     with col_c:
-        if st.button("🔄 Reset hasil terakhir"):
+        if st.button("🔄 Reset hasil terakhir", key="btn_reset"):
             st.session_state.last_result = None
             st.session_state.last_context = None
             st.success("Riwayat hasil direset.")
@@ -290,17 +298,6 @@ if st.session_state.page == "beranda":
     st.dataframe(sample_df)
     csv = sample_df.to_csv(index=False).encode('utf-8')
     st.download_button("Download contoh CSV", data=csv, file_name="template_tensi.csv", mime="text/csv")
-
-    # JS listener to set page via custom event (for HTML buttons)
-    st.markdown("""
-    <script>
-    window.addEventListener('setPage', function(e){
-        const page = e.detail;
-        // try to set Streamlit page by changing location.hash (fallback)
-        window.location.hash = page;
-    });
-    </script>
-    """, unsafe_allow_html=True)
 
     st.stop()
 
