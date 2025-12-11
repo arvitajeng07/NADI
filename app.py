@@ -1,6 +1,6 @@
-# APP.PY FINAL
+# APP.PY FINAL — with dramatic full-screen HTML popups (anomaly + normal)
 # ============================================================
-# ===================== IMPORT LIBRARY ========================
+# ===================== IMPORT LIBRARY =======================
 # ============================================================
 
 import streamlit as st
@@ -19,17 +19,12 @@ import streamlit.components.v1 as components
 # ===================== PAGE CONFIG ===========================
 # ============================================================
 
-# Layout wide + title tab
 st.set_page_config(page_title="NADI (RK4) — Soft Blue", layout="wide")
 
-# Simpan sesi halaman
 if "page" not in st.session_state:
     st.session_state.page = "beranda"
-
-# Simpan hasil terakhir
 if "last_result" not in st.session_state:
     st.session_state.last_result = None
-
 if "last_context" not in st.session_state:
     st.session_state.last_context = None
 
@@ -54,7 +49,6 @@ st.markdown(
         background: linear-gradient(180deg, var(--bg1), var(--bg2));
     }
 
-    /* Judul besar putih */
     .big-nadi-title {
         font-family: "Times New Roman", serif;
         font-size: 70px;
@@ -76,7 +70,6 @@ st.markdown(
         line-height:1.45;
     }
 
-    /* Kartu glass */
     .glass {
         background: linear-gradient(
             180deg,
@@ -99,7 +92,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
 
 # ============================================================
 # ===================== AUDIO GENERATOR =======================
@@ -129,77 +121,190 @@ def wav_bytes_to_datauri(wav_bytes):
     b64 = base64.b64encode(wav_bytes).decode()
     return f"data:audio/wav;base64,{b64}"
 
-
 # ============================================================
 # ===================== RK4 PREDIKSI ==========================
 # ============================================================
 
 def rk4_predict_value(last, prev, h=1.0):
-    """
-    Fungsi prediksi sederhana berbasis RK4:
-    RUAS RUMUS TIDAK DIJELASKAN KE USER (karena representasi internal).
-    """
     slope = last - prev
     def f(t, y): return slope
-
     k1 = f(0, last)
     k2 = f(h/2, last + h*k1/2)
     k3 = f(h/2, last + h*k2/2)
     k4 = f(h, last + h*k3)
-
     return last + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
 
-
 def rk4_predict_series(arr):
-    """
-    Ambil dua data terakhir → prediksi satu langkah ke depan.
-    """
     arr = list(arr)
     if len(arr) < 2:
         return None
     return rk4_predict_value(arr[-1], arr[-2])
-
 
 # ============================================================
 # ===================== DETEKSI ANOMALI =======================
 # ============================================================
 
 def detect_anomaly_df(df):
-    """
-    Deteksi sebagai anomali jika:
-    Hipertensi: Sist > 140 atau Diast > 90
-    Hipotensi:  Sist < 90  atau Diast < 60
-    """
     df = df.copy()
     df['Systolic'] = pd.to_numeric(df['Systolic'], errors='coerce')
     df['Diastolic'] = pd.to_numeric(df['Diastolic'], errors='coerce')
-
     df['Hipertensi'] = (df['Systolic'] > 140) | (df['Diastolic'] > 90)
     df['Hipotensi'] = (df['Systolic'] < 90) | (df['Diastolic'] < 60)
-
     df['Anom_Total'] = df['Hipertensi'] | df['Hipotensi']
     return df
 
-
 # ============================================================
-# ===================== POPUP FUNCTIONS =======================
+# ===================== POPUP (DRAMATIC INLINE HTML) =========
 # ============================================================
 
+# Warning (red) dramatic popup — full-screen with blur and siren icon
 def warning_popup():
-    try:
-        html = open("warning_popup.html", "r", encoding="utf-8").read()
-        components.html(html, height=520, scrolling=False)
-    except:
-        st.error("File warning_popup.html tidak ditemukan.")
+    # create HTML with backdrop blur, animated popup, and siren icon
+    html = f"""
+    <style>
+    .popup-root {{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(6px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:999999;
+    }}
+    .popup-box {{
+      width: 560px;
+      background: linear-gradient(135deg, rgba(255,80,80,0.98), rgba(180,10,10,0.98));
+      border-radius: 18px;
+      padding: 40px;
+      text-align:center;
+      color: white;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      transform-origin: center;
+      animation: popin .36s ease-out;
+      border: 2px solid rgba(255,0,0,0.24);
+    }}
+    .sirene-icon {{
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 16px;
+      background: radial-gradient(circle at 30% 30%, #fff4, #ffdddd);
+      border-radius: 50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:64px;
+      box-shadow: 0 8px 30px rgba(255,0,0,0.35);
+    }}
+    .popup-title {{
+      font-size:28px;
+      font-weight:800;
+      margin-bottom:10px;
+      text-shadow: 0 0 12px rgba(255,80,80,0.6);
+    }}
+    .popup-msg {{
+      font-size:16px;
+      color: rgba(255,255,255,0.95);
+      line-height:1.4;
+      margin-bottom:14px;
+    }}
+    @keyframes popin {{
+      0% {{ transform: scale(0.6); opacity:0; }}
+      60% {{ transform: scale(1.04); opacity:1; }}
+      100% {{ transform: scale(1); opacity:1; }}
+    }}
+    </style>
 
+    <div class="popup-root" id="popup-root">
+      <div class="popup-box">
+        <div class="sirene-icon">🚨</div>
+        <div class="popup-title">PERINGATAN ANOMALI</div>
+        <div class="popup-msg">Terdeteksi nilai tekanan darah di luar rentang normal. Silakan cek data pasien dan tindak lanjuti ke profesional kesehatan jika perlu.</div>
+      </div>
+    </div>
 
+    <script>
+    // auto remove after 1600ms so it doesn't permanently block UI
+    setTimeout(()=>{{
+       const e = document.getElementById('popup-root');
+       if(e) e.style.display='none';
+    }}, 1600);
+    </script>
+    """
+    components.html(html, height=600, scrolling=False)
+
+# Normal (green) dramatic popup — full-screen with blur and check icon
 def normal_popup():
-    try:
-        html = open("normal_popup.html", "r", encoding="utf-8").read()
-        components.html(html, height=520, scrolling=False)
-    except:
-        st.error("File normal_popup.html tidak ditemukan.")
+    html = f"""
+    <style>
+    .popup-root-green {{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(6px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:999999;
+    }}
+    .popup-box-green {{
+      width: 520px;
+      background: linear-gradient(135deg, rgba(0,200,80,0.95), rgba(20,220,120,0.95));
+      border-radius: 18px;
+      padding: 40px;
+      text-align:center;
+      color: white;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: popin .36s ease-out;
+      border: 2px solid rgba(0,255,128,0.25);
+    }}
+    .check-icon {{
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 16px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+      border-radius: 50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:64px;
+      box-shadow: 0 8px 30px rgba(0,255,128,0.18);
+    }}
+    .popup-title-green {{
+      font-size:28px;
+      font-weight:800;
+      margin-bottom:10px;
+      text-shadow: 0 0 10px rgba(0,255,128,0.4);
+    }}
+    .popup-msg-green {{
+      font-size:16px;
+      color: rgba(255,255,255,0.95);
+      line-height:1.4;
+      margin-bottom:14px;
+    }}
+    @keyframes popin {{
+      0% {{ transform: scale(0.6); opacity:0; }}
+      60% {{ transform: scale(1.04); opacity:1; }}
+      100% {{ transform: scale(1); opacity:1; }}
+    }}
+    </style>
 
+    <div class="popup-root-green" id="popup-root-green">
+      <div class="popup-box-green">
+        <div class="check-icon">✔️</div>
+        <div class="popup-title-green">Datamu Normal</div>
+        <div class="popup-msg-green">Data terdeteksi normal. Tetap jaga kesehatan ya!</div>
+      </div>
+    </div>
+
+    <script>
+    setTimeout(()=>{{
+       const e = document.getElementById('popup-root-green');
+       if(e) e.style.display='none';
+    }}, 1400);
+    </script>
+    """
+    components.html(html, height=560, scrolling=False)
 
 # ============================================================
 # ====================   BERANDA / LANDING   =================
