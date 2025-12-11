@@ -1,12 +1,19 @@
 """
-APP.PY FINAL NADI — versi lengkap sesuai revisi:
-- Judul putih + Times New Roman + besar + emot ❤️
-- Dramatic popup memakai warning_popup.html (root)
-- RK4 tetap
-- Deteksi anomali HANYA hipertensi & hipotensi
-- Alarm sirine tetap
-- Halaman RK4 jauh lebih lengkap
+APP.PY FINAL — Sudah mencakup:
+
+✔ Judul putih + Times New Roman + emot ❤️
+✔ Deteksi anomali hanya hipertensi & hipotensi
+✔ Popup merah (warning_popup.html)
+✔ Popup hijau normal + bunyi “tring” 0.8s
+✔ Alarm sirine anomali 0.8s
+✔ Halaman RK4 versi naratif (tanpa rumus)
+✔ Navigasi lengkap
+✔ Tampilan aesthetic biru tetap
 """
+
+# ============================================================
+# ===================== IMPORT LIBRARY ========================
+# ============================================================
 
 import streamlit as st
 import pandas as pd
@@ -19,31 +26,40 @@ from datetime import datetime, timedelta
 import streamlit.components.v1 as components
 import time
 
-# -----------------------
-# Page config & session
-# -----------------------
+
+# ============================================================
+# ===================== PAGE CONFIG ===========================
+# ============================================================
+
+# Layout wide + title tab
 st.set_page_config(page_title="NADI (RK4) — Soft Blue", layout="wide")
 
+# Simpan sesi halaman
 if "page" not in st.session_state:
     st.session_state.page = "beranda"
+
+# Simpan hasil terakhir
 if "last_result" not in st.session_state:
     st.session_state.last_result = None
+
 if "last_context" not in st.session_state:
     st.session_state.last_context = None
 
-# -----------------------
-# CSS (new title ❤️ + white)
-# -----------------------
+
+# ============================================================
+# ===================== CUSTOM STYLING ========================
+# ============================================================
+
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 
     :root{
-      --bg1: #f3f9ff; 
+      --bg1: #f3f9ff;
       --bg2: #eaf6ff;
-      --primary-1: #0b63d9; 
-      --primary-2: #1ea7ff; 
+      --primary-1: #0b63d9;
+      --primary-2: #1ea7ff;
       --muted: #6b7280;
     }
 
@@ -52,7 +68,7 @@ st.markdown(
         background: linear-gradient(180deg, var(--bg1), var(--bg2));
     }
 
-    /* NEW TITLE STYLE */
+    /* Judul besar putih */
     .big-nadi-title {
         font-family: "Times New Roman", serif;
         font-size: 70px;
@@ -74,7 +90,7 @@ st.markdown(
         line-height:1.45;
     }
 
-    /* Glass tiles */
+    /* Kartu glass */
     .glass {
         background: linear-gradient(
             180deg,
@@ -91,104 +107,198 @@ st.markdown(
         transform: translateY(-6px);
         box-shadow: 0 18px 40px rgba(11,99,217,0.09);
     }
-    .spacer { margin-top: 14px; margin-bottom: 14px; }
 
+    .spacer { margin-top: 14px; margin-bottom: 14px; }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# -----------------------
-# HELPERS: siren audio
-# -----------------------
-def generate_siren_wav(duration=1.8, sr=44100):
+
+# ============================================================
+# ===================== AUDIO GENERATOR =======================
+# ============================================================
+
+# -------------------------
+# 1) Sirine untuk anomali
+# -------------------------
+def generate_siren_wav(duration=0.8, sr=44100):
+    """
+    Membuat suara sirine pendek (0.8 detik).
+    Digunakan saat tensi dinyatakan anomali.
+    """
     t = np.linspace(0, duration, int(sr*duration), endpoint=False)
+
+    # modulasi sirine
     mod = 0.5 * (1 + np.sin(2 * np.pi * 1.2 * t))
     freq = 800 + 300 * np.sin(2 * np.pi * 0.6 * t)
+
     tone = 0.6 * np.sin(2 * np.pi * freq * t) * (0.6 + 0.4 * mod)
     tone = np.clip(tone, -1, 1)
+
     buf = BytesIO()
     sf.write(buf, tone, sr, format='WAV')
     buf.seek(0)
+
     return buf.read()
 
+
+# -------------------------
+# 2) Ting normal (success)
+# -------------------------
+def generate_ting_wav(duration=0.8, sr=44100):
+    """
+    Membuat bunyi 'tringgg' pendek (0.8 detik).
+    Digunakan saat data normal.
+    """
+    t = np.linspace(0, duration, int(sr*duration), endpoint=False)
+    freq = 1800  # nada tinggi
+    tone = 0.6 * np.sin(2 * np.pi * freq * t)
+
+    buf = BytesIO()
+    sf.write(buf, tone, sr, format='WAV')
+    buf.seek(0)
+
+    return buf.read()
+
+
+# Convert WAV → base64 data URI
 def wav_bytes_to_datauri(wav_bytes):
     b64 = base64.b64encode(wav_bytes).decode()
     return f"data:audio/wav;base64,{b64}"
 
-# -----------------------
-# RK4 (tetap sama)
-# -----------------------
+
+# ============================================================
+# ===================== RK4 PREDIKSI ==========================
+# ============================================================
+
 def rk4_predict_value(last, prev, h=1.0):
+    """
+    Fungsi prediksi sederhana berbasis RK4:
+    RUAS RUMUS TIDAK DIJELASKAN KE USER (karena representasi internal).
+    """
     slope = last - prev
-    def f(t, y):
-        return slope
+    def f(t, y): return slope
+
     k1 = f(0, last)
     k2 = f(h/2, last + h*k1/2)
     k3 = f(h/2, last + h*k2/2)
     k4 = f(h, last + h*k3)
+
     return last + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
 
+
 def rk4_predict_series(arr):
+    """
+    Ambil dua data terakhir → prediksi satu langkah ke depan.
+    """
     arr = list(arr)
     if len(arr) < 2:
         return None
     return rk4_predict_value(arr[-1], arr[-2])
 
-# -----------------------
-# DETEKSI ANOMALI BARU
-# Hanya Hipertensi / Hipotensi
-# -----------------------
-def detect_anomaly_df(
-    df,
-    thresh_sys_high=140,
-    thresh_dia_high=90,
-    thresh_sys_low=90,
-    thresh_dia_low=60
-):
+
+# ============================================================
+# ===================== DETEKSI ANOMALI =======================
+# ============================================================
+
+def detect_anomaly_df(df):
+    """
+    Deteksi sebagai anomali jika:
+    Hipertensi: Sist > 140 atau Diast > 90
+    Hipotensi:  Sist < 90  atau Diast < 60
+    """
+
     df = df.copy()
     df['Systolic'] = pd.to_numeric(df['Systolic'], errors='coerce')
     df['Diastolic'] = pd.to_numeric(df['Diastolic'], errors='coerce')
 
-    df['Hipertensi'] = (df['Systolic'] > thresh_sys_high) | (df['Diastolic'] > thresh_dia_high)
-    df['Hipotensi'] = (df['Systolic'] < thresh_sys_low) | (df['Diastolic'] < thresh_dia_low)
+    df['Hipertensi'] = (df['Systolic'] > 140) | (df['Diastolic'] > 90)
+    df['Hipotensi'] = (df['Systolic'] < 90) | (df['Diastolic'] < 60)
 
     df['Anom_Total'] = df['Hipertensi'] | df['Hipotensi']
 
     return df
 
-# -----------------------
-# RENDER HTML DRAMATIC POPUP
-# (warning_popup.html di root)
-# -----------------------
+
+# ============================================================
+# ===================== POPUP FUNCTIONS =======================
+# ============================================================
+
+# ------------------------------
+# 1) Popup merah dramatis (HTML)
+# ------------------------------
 def render_dramatic_html():
+    """
+    Memanggil warning_popup.html (punyamu sendiri).
+    """
     try:
         html_code = open("warning_popup.html", "r", encoding="utf-8").read()
         components.html(html_code, height=500, scrolling=False)
     except Exception as e:
         st.error(f"Gagal memuat warning_popup.html: {e}")
+
+
+# ------------------------------
+# 2) Popup hijau (data normal)
+# ------------------------------
+def render_normal_popup():
+    """
+    Popup centang hijau dengan pesan:
+    'Data Normal, Jaga Kesehatan Ya!!!'
+    """
+    html_code = """
+    <div style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.55);
+        backdrop-filter:blur(4px);
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        z-index:999999;">
+        
+        <div style="
+            background:rgba(255,255,255,0.9);
+            padding:50px 70px;
+            border-radius:20px;
+            text-align:center;
+            box-shadow:0 0 25px rgba(0,150,0,0.3);">
+            
+            <img src='https://cdn-icons-png.flaticon.com/512/845/845646.png'
+                 style="width:130px; margin-bottom:20px; filter: drop-shadow(0 0 10px green);">
+            
+            <h1 style="color:green; font-size:36px; margin:0;">
+                Data Normal, Jaga Kesehatan Ya!!!
+            </h1>
+        </div>
+    </div>
+    """
+    components.html(html_code, height=400, scrolling=False)
 # ============================================================
-# ====================   BERANDA   ===========================
+# ====================   BERANDA / LANDING   =================
 # ============================================================
+
 if st.session_state.page == "beranda":
 
+    # Judul besar (Times New Roman, putih, emot jantung)
     st.markdown(
         "<div class='big-nadi-title'>❤️ NADI : Numeric Analysis of Diastolic & Systolic</div>",
         unsafe_allow_html=True
     )
 
+    # Deskripsi singkat
     st.markdown("<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>Namun, <b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>", 
 	unsafe_allow_html=True
     )
 
-    # Dua kotak menu
+    # Dua kartu utama
     c1, c2 = st.columns(2)
 
     with c1:
         st.markdown(
             "<div class='glass'><h3 style='color:var(--primary-1)'>Input Data (Puskesmas / Klinik)</h3>"
-            "<p style='color:var(--muted)'>Upload CSV/XLSX dengan banyak pasien. "
-            "Sistem akan membaca tensi, mendeteksi hipertensi/hipotensi, dan memprediksi nilai berikutnya.</p>"
+            "<p style='color:var(--muted)'>Upload CSV/XLSX berisi banyak pasien. Sistem akan memproses tiap pasien, mendeteksi hipertensi/hipotensi, dan memprediksi nilai berikutnya.</p>"
             "<div class='spacer'></div>",
             unsafe_allow_html=True
         )
@@ -207,22 +317,22 @@ if st.session_state.page == "beranda":
             st.session_state.page = "personal"
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Navigasi tambahan
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
+    # Tombol tambahan
+    a, b, c = st.columns(3)
+    with a:
         if st.button("📊 Hasil Analisis Terakhir"):
             st.session_state.page = "hasil"
-    with col_b:
+    with b:
         if st.button("❔ Mengapa RK4?"):
             st.session_state.page = "rk4info"
-    with col_c:
+    with c:
         if st.button("🔄 Reset Hasil"):
             st.session_state.last_result = None
             st.session_state.last_context = None
             st.success("Riwayat hasil telah direset.")
 
     st.markdown("---")
-    st.subheader("Contoh Template Data Upload")
+    st.subheader("Contoh Template Data (Upload)")
 
     sample_df = pd.DataFrame({
         "Nama": ["Budi","Budi","Siti","Siti"],
@@ -246,6 +356,7 @@ if st.session_state.page == "beranda":
 # ============================================================
 # ==================   INPUT DATA (UPLOAD)   ==================
 # ============================================================
+
 if st.session_state.page == "input":
 
     st.header("📁 Analisis Data Populasi (Upload CSV / XLSX)")
@@ -258,6 +369,7 @@ if st.session_state.page == "input":
     run = st.button("Analisis (RK4)")
 
     if uploaded is not None:
+        # baca file
         try:
             if uploaded.name.lower().endswith(".csv"):
                 df = pd.read_csv(uploaded)
@@ -267,40 +379,43 @@ if st.session_state.page == "input":
             st.error(f"Gagal membaca file: {e}")
             st.stop()
 
+        # bersihkan nama kolom
         df.columns = [c.strip() for c in df.columns]
-        st.info("Preview data:")
+        st.info("Pratinjau data (baris awal):")
         st.dataframe(df.head(50))
 
+        # validasi kolom wajib
         required = {"Nama","Systolic","Diastolic"}
-        if not required.issubset(df.columns):
-            st.error(f"Kolom minimal harus ada: {sorted(required)}")
+        if not required.issubset(set(df.columns)):
+            st.error(f"File harus berisi kolom minimal: {sorted(list(required))}")
             st.stop()
 
-        # Handle tanggal
+        # handle tanggal jika ada
         if "Tanggal" in df.columns:
             df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
             if df["Tanggal"].isna().any():
                 df["Tanggal"] = df["Tanggal"].fillna(method="ffill")
         else:
+            # buat tanggal terbalik agar mudah plot
             today = datetime.now().date()
             n = len(df)
-            df["Tanggal"] = [
-                pd.Timestamp(today - timedelta(days=(n-1-i)))
-                for i in range(n)
-            ]
+            df["Tanggal"] = [pd.Timestamp(today - timedelta(days=(n-1-i))) for i in range(n)]
 
+        # jalankan analisis ketika tombol ditekan
         if run:
             parts = []
             alert_needed = False
             alert_names = []
 
+            # proses per pasien
             for name, g in df.groupby("Nama", sort=False):
                 g2 = g.sort_values("Tanggal").reset_index(drop=True)
                 g2 = g2[["Nama","Tanggal","Systolic","Diastolic"]].copy()
 
+                # deteksi anomali (hipertensi/hipotensi)
                 g2 = detect_anomaly_df(g2)
 
-                # RK4
+                # prediksi RK4
                 pred_s = rk4_predict_series(g2["Systolic"])
                 pred_d = rk4_predict_series(g2["Diastolic"])
 
@@ -312,37 +427,43 @@ if st.session_state.page == "input":
 
                 parts.append(g2)
 
+                # jika pasien punya anomali (any row)
                 if g2["Anom_Total"].any():
                     alert_needed = True
                     alert_names.append(name)
 
+            # gabungkan hasil
             result = pd.concat(parts, ignore_index=True)
 
             st.subheader("Hasil Analisis")
             st.dataframe(result)
 
+            # simpan ke session
             st.session_state.last_result = result
-            st.session_state.last_context = {"mode":"Input", "file":uploaded.name}
+            st.session_state.last_context = {"mode":"Input", "file": uploaded.name}
 
+            # jika ada alert → panggil dramatic popup HTML + sirine singkat
             if alert_needed:
-                st.error(f"🚨 Terdeteksi pasien dengan hipertensi/hipotensi: {', '.join(alert_names)}")
+                st.error(f"🚨 Terdeteksi pasien dengan hipertensi/hipotensi: {', '.join(alert_names[:6])}")
 
-                # === 1) Dramatic popup (HTML versimu) ===
+                # 1) panggil popup merah (file HTML yang kamu sediakan)
                 render_dramatic_html()
 
-                # === 2) Alarm sirine (muncul setelah popup) ===
-                wav = generate_siren_wav(duration=2.0)
+                # 2) bunyi sirine singkat (0.8s)
+                wav = generate_siren_wav()  # default 0.8s
                 datauri = wav_bytes_to_datauri(wav)
-                time.sleep(1.6)   # tunggu popup hilang sebelum muncul alarm
 
-                # Fullscreen overlay alarm
+                # beri delay kecil supaya popup terlihat dulu
+                time.sleep(1.4)
+
+                # tampilkan overlay alarm fullscreen dengan audio loop
                 st.markdown(
                     f"""
                     <div style="position:fixed; inset:0; background:rgba(0,0,0,0.6);
                                 backdrop-filter:blur(3px); z-index:999999; display:flex;
                                 justify-content:center; align-items:center;">
                         <div style="text-align:center; color:white;">
-                            <h1>🚨 PERINGATAN: Anomali Tensi Terdeteksi!</h1>
+                            <h1>🚨 PERINGATAN: Hipertensi / Hipotensi Terdeteksi!</h1>
                             <audio autoplay loop>
                                 <source src="{datauri}" type="audio/wav">
                             </audio>
@@ -351,9 +472,27 @@ if st.session_state.page == "input":
                     """,
                     unsafe_allow_html=True
                 )
+
             else:
+                # jika tidak ada anomali → popup hijau + bunyi ting
                 st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
 
+                # 1) popup hijau
+                render_normal_popup()
+
+                # 2) bunyi 'tring' singkat
+                wav = generate_ting_wav()  # default 0.8s
+                datauri = wav_bytes_to_datauri(wav)
+                st.markdown(
+                    f"""
+                    <audio autoplay>
+                        <source src="{datauri}" type="audio/wav">
+                    </audio>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+    # tombol kembali
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
     st.stop()
@@ -362,17 +501,20 @@ if st.session_state.page == "input":
 # ============================================================
 # ==================   PERSONAL ANALYSIS   ====================
 # ============================================================
+
 if st.session_state.page == "personal":
 
     st.header("👤 Analisis Personal")
-    st.write("Isi hingga 10 data tensi lalu klik Analisis (RK4).")
+    st.write("Masukkan nama lalu input 1–10 data tensi. Urutkan kronologis (data paling awal dulu).")
 
+    # input user
     name = st.text_input("Nama")
     n = st.number_input("Jumlah data (1–10)", min_value=1, max_value=10, value=4)
 
     systolic = []
     diastolic = []
 
+    # form pengisian
     for i in range(int(n)):
         c1, c2 = st.columns(2)
         with c1:
@@ -385,56 +527,57 @@ if st.session_state.page == "personal":
     analyze = st.button("Analisis (RK4)")
 
     if analyze:
+        # validasi nama
         if not name:
             st.error("Masukkan nama terlebih dahulu.")
             st.stop()
 
+        # buat dataframe personal
         dfp = pd.DataFrame({
-            "Nama":[name]*int(n),
-            "Tanggal":[pd.Timestamp(datetime.now().date()-timedelta(days=(int(n)-1-i))) for i in range(int(n))],
-            "Systolic":systolic,
-            "Diastolic":diastolic
+            "Nama": [name]*int(n),
+            "Tanggal": [pd.Timestamp(datetime.now().date()-timedelta(days=(int(n)-1-i))) for i in range(int(n))],
+            "Systolic": systolic,
+            "Diastolic": diastolic
         })
 
+        # deteksi & prediksi
         dfp = detect_anomaly_df(dfp)
-
         pred_s = rk4_predict_series(dfp["Systolic"])
         pred_d = rk4_predict_series(dfp["Diastolic"])
 
         dfp["Prediksi_Systolic"] = np.nan
         dfp["Prediksi_Diastolic"] = np.nan
-
         if pred_s is not None:
             dfp.at[len(dfp)-1, "Prediksi_Systolic"] = pred_s
             dfp.at[len(dfp)-1, "Prediksi_Diastolic"] = pred_d
 
+        # tampilkan hasil
         st.subheader("Hasil Analisis Personal")
         st.dataframe(dfp)
 
-        # Chart
+        # plot sederhana
         fig, ax = plt.subplots(figsize=(9,3))
         ax.plot(dfp["Tanggal"], dfp["Systolic"], marker="o", label="Systolic")
         ax.plot(dfp["Tanggal"], dfp["Diastolic"], marker="o", label="Diastolic")
-
         if pred_s is not None:
             nd = dfp["Tanggal"].iloc[-1] + pd.Timedelta(days=1)
             ax.scatter([nd],[pred_s], marker='D', s=80)
             ax.scatter([nd],[pred_d], marker='D', s=80)
-
         ax.set_title(f"Tensi - {name}")
         ax.legend()
         st.pyplot(fig)
 
-        # Anomali?
+        # jika data terakhir anomali → popup merah + sirine
         if dfp["Anom_Total"].iloc[-1]:
-            st.error("⚠️ Terdeteksi hipertensi / hipotensi!")
+            st.error("⚠️ Terdeteksi hipertensi / hipotensi pada data terakhir!")
 
-            # === Dramatic popup HTML ===
+            # panggil popup merah (HTML)
             render_dramatic_html()
 
-            wav = generate_siren_wav(duration=2.0)
+            # bunyi sirine singkat (0.8s)
+            wav = generate_siren_wav()
             datauri = wav_bytes_to_datauri(wav)
-            time.sleep(1.6)
+            time.sleep(1.4)  # beri jeda supaya popup terlihat dulu
 
             st.markdown(
                 f"""
@@ -451,139 +594,106 @@ if st.session_state.page == "personal":
                 """,
                 unsafe_allow_html=True
             )
-        else:
-            st.success("✔ Data normal.")
 
-        # prediksi text
-        if pred_s is not None:
+        else:
+            # data normal → popup hijau + bunyi 'tring'
+            st.success("✔ Data normal.")
+            render_normal_popup()
+            wav = generate_ting_wav()
+            datauri = wav_bytes_to_datauri(wav)
             st.markdown(
-                f"**Prediksi RK4 (1 langkah)** — Sistolik: **{pred_s:.2f}**, Diastolik: **{pred_d:.2f}**"
+                f"""
+                <audio autoplay>
+                    <source src="{datauri}" type="audio/wav">
+                </audio>
+                """,
+                unsafe_allow_html=True
             )
 
-        st.session_state.last_result = dfp
-        st.session_state.last_context = {"mode":"Personal", "name":name}
+        # tampilkan prediksi singkat
+        if pred_s is not None:
+            st.markdown(f"**Prediksi RK4 (1 langkah)** — Sistolik: **{pred_s:.2f}**, Diastolik: **{pred_d:.2f}**")
 
+        # simpan ke session
+        st.session_state.last_result = dfp
+        st.session_state.last_context = {"mode":"Personal", "name": name}
+
+    # tombol kembali
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
     st.stop()
 # ============================================================
-# ==================   HASIL ANALISIS   =======================
+# ==================   HALAMAN HASIL ANALISIS   ==============
 # ============================================================
+
 if st.session_state.page == "hasil":
 
     st.header("📊 Hasil Analisis Terakhir")
 
     if st.session_state.last_result is None:
-        st.info("Belum ada hasil. Lakukan analisis pada menu Input Data atau Personal.")
+        st.info("Belum ada hasil. Silakan lakukan analisis pada menu Input Data atau Personal.")
     else:
         ctx = st.session_state.last_context
-        st.write("Context:", ctx)
+        st.write("Konteks Analisis:", ctx)
         st.dataframe(st.session_state.last_result)
 
         df_show = st.session_state.last_result
         total_anom = int(df_show["Anom_Total"].sum()) if "Anom_Total" in df_show.columns else 0
+
         st.markdown(f"**Total hipertensi / hipotensi terdeteksi:** {total_anom}")
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
+
     st.stop()
 
 
 # ============================================================
-# =====================   MENGAPA RK4?   ======================
+# =====================   MENGAPA RK4?   =======================
 # ============================================================
+
 if st.session_state.page == "rk4info":
 
     st.header("❔ Mengapa Menggunakan Metode RK4?")
 
     st.markdown("""
-    Metode **Runge–Kutta Orde 4 (RK4)** adalah salah satu metode paling populer untuk menyelesaikan
-    *Ordinary Differential Equations (ODE)* karena **akurasi tinggi** namun **tetap ringan secara komputasi**.
+    Metode **Runge–Kutta Orde 4 (RK4)** adalah salah satu pendekatan numerik yang paling
+    banyak digunakan ketika kita ingin memperkirakan nilai di masa depan berdasarkan data
+    yang sudah ada. Dalam konteks aplikasi ini, RK4 dipakai untuk memperkirakan arah
+    perubahan tekanan darah sehingga pengguna dapat melihat pola yang lebih halus dan
+    stabil. Ketika data tekanan darah berubah-ubah karena aktivitas, kondisi tubuh, atau
+    sedikit kesalahan saat pengukuran, hasilnya sering terlihat kaku atau mendadak.
+    RK4 membantu meredam efek tersebut dengan cara melakukan proses perhitungan secara
+    bertahap dan lebih hati-hati, sehingga hasil akhirnya menjadi lebih konsisten.
 
-    ---
-    ## 🔹 1. Apa itu ODE dalam konteks tekanan darah?
-    Kita dapat memandang perubahan tekanan darah sebagai fungsi waktu:
+    Sederhananya, RK4 bekerja dengan membaca perubahan secara perlahan dari beberapa
+    sudut pandang perhitungan, lalu menggabungkannya menjadi satu prediksi yang lebih
+    masuk akal. Inilah mengapa banyak sistem monitoring memakai RK4: metodenya cukup
+    akurat, namun tidak memberatkan komputasi. Jika dibandingkan dengan metode yang
+    sangat sederhana, hasil RK4 jauh lebih stabil dan tidak mudah terpengaruh oleh satu
+    atau dua data yang tiba-tiba saja naik atau turun drastis. Hasil prediksi tidak
+    melompat-lompat, dan lebih mudah dianalisis.
 
-    ### \\\( \\frac{dy}{dt} = f(t, y) \\\)
-
-    tetapi dalam aplikasi klinis sederhana, kita hanya mempunyai beberapa titik data.
-    Maka digunakan pendekatan *estimasi perubahan* dengan:
-
-    - membaca dua titik terakhir,
-    - memperkirakan laju perubahan (slope),
-    - lalu menggunakan RK4 untuk mendapatkan estimasi yang lebih stabil.
-
-    ---
-    ## 🔹 2. Mengapa bukan Euler?
-    Metode Euler:
-    - cepat
-    - tapi **sangat kasar**
-    - sensitif terhadap noise
-    - mudah “melejit” bila datanya tidak stabil
-
-    ---
-    ## 🔹 3. Mengapa bukan Heun / RK2?
-    Metode Heun (RK2):
-    - akurat daripada Euler
-    - namun masih sering overshoot
-
-    ---
-    ## 🔹 4. Keunggulan RK4
-    RK4 menghitung 4 *sampling* kemiringan:
-
-    - \\\(k_1 = f(t, y)\\)
-    - \\\(k_2 = f(t+h/2, y + k_1 h / 2)\\)
-    - \\\(k_3 = f(t+h/2, y + k_2 h / 2)\\)
-    - \\\(k_4 = f(t+h, y + k_3 h)\\)
-
-    Lalu kombinasi bobot:
-    ### \\\( y_{baru} = y + \\frac{1}{6}(k_1 + 2k_2 + 2k_3 + k_4)h \\\)
-
-    Hasilnya:
-    - **lebih halus**
-    - **lebih stabil**
-    - **lebih aman dari noise**
-    - cocok untuk data vital seperti *systolic* dan *diastolic*.
-
-    ---
-    ## 🔹 5. Contoh Sederhana
-    Misalkan dua data terakhir adalah:
-
-    - 120 → 130 (naik 10)
-    - Kemiringan = +10
-
-    RK4 tidak langsung menambah 10 secara mentah,
-    tetapi menempuh empat estimasi sehingga prediksi menjadi lebih stabil,
-    misalnya sekitar: **130 → 139.99** (tergantung parameternya).
-
-    ---
-    ## 📌 Kesimpulan
-    RK4 memberikan hasil prediksi yang:
-    - halus ✔  
-    - tidak mudah terpeleset oleh noise ✔  
-    - tetap ringan untuk dijalankan di Streamlit ✔  
-
-    **Catatan:** Prediksi ini bersifat ilustratif dan bukan alat diagnosis.
+    Dalam aplikasi ini, RK4 tidak dimaksudkan untuk diagnosis, melainkan sebagai alat
+    edukasi guna membantu melihat pola perubahan tekanan darah dengan cara yang lebih
+    halus dan aman. Karena sifatnya yang stabil dan tidak terlalu sensitif terhadap
+    fluktuasi kecil, RK4 menjadi pilihan terbaik untuk menampilkan gambaran umum pola
+    tekanan darah tanpa membuat pengguna salah paham akibat perubahan-perubahan kecil
+    yang sebenarnya tidak signifikan.
     """)
-
-    st.markdown("---")
-    st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/1/1a/Runge-Kutta_method.svg",
-        caption="Diagram skematik metode Runge-Kutta"
-    )
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
     st.stop()
 
-
 # ============================================================
 # =======================   FOOTER   ==========================
 # ============================================================
+
 st.markdown("---")
 st.markdown(
     "<div style='color:var(--muted); font-size:13px;'>"
-    "NADI | RK4 — aplikasi edukasi numerik, bukan alat diagnosis medis."
+    "NADI | RK4 — Aplikasi edukasi komputasi tekanan darah (bukan alat diagnosis medis)."
     "</div>",
     unsafe_allow_html=True
 )
