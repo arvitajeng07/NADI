@@ -2,67 +2,30 @@
 # ============================================================
 
 import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+import soundfile as sf
+from datetime import datetime, timedelta
+import streamlit.components.v1 as components
+import time
+import os
 
+# -----------------------
+# Page config & session
+# -----------------------
+st.set_page_config(page_title="NADI (RK4) — Soft Blue", layout="wide")
 
-* {
-font-family: Inter, sans-serif;
-}
+if "page" not in st.session_state:
+    st.session_state.page = "beranda"
+if "last_result" not in st.session_state:
+    st.session_state.last_result = None
+if "last_context" not in st.session_state:
+    st.session_state.last_context = None
 
-
-body {
-background: radial-gradient(circle at 20% 20%, #d7ecff, #bcdcff, #a6d4ff);
-overflow-x: hidden;
-}
-
-
-/* Aesthetic moving medical pattern */
-.pattern {
-position: fixed;
-inset: 0;
-background-image: url('https://i.imgur.com/fLoykLC.png');
-opacity: 0.14;
-animation: drift 38s linear infinite;
-pointer-events: none;
-z-index: -1;
-}
-
-
-@keyframes drift {
-from { transform: translate(0,0); }
-to { transform: translate(-420px, -320px); }
-}
-
-
-/* Gradient Glass Navigation Buttons (C4 style) */
-.glass-nav {
-padding: 14px 22px;
-border-radius: 18px;
-background: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.22));
-backdrop-filter: blur(14px);
-box-shadow: 0 8px 26px rgba(0,0,0,0.15);
-border: 1px solid rgba(255,255,255,0.5);
-text-align: center;
-transition: 0.25s ease;
-cursor: pointer;
-font-weight: 600;
-color: #003a75;
-}
-
-
-.glass-nav:hover{
-transform: translateY(-6px) scale(1.03);
-box-shadow: 0 14px 34px rgba(0,0,0,0.22);
-}
-
-
-.pattern-holder { position: relative; }
-
-
-</style>
-<div class='pattern'></div>
-""",
-unsafe_allow_html=True
-)# -----------------------
+# -----------------------
 # GLOBAL CSS (app look)
 # -----------------------
 st.markdown(
@@ -315,28 +278,18 @@ if st.session_state.page == "beranda":
             st.session_state.page = "personal"
         st.markdown("</div>", unsafe_allow_html=True)
 
-    nav1, nav2, nav3, nav4 = st.columns(4)
-
-with nav1:
-    if st.markdown("<div class='glass-nav'>📊 Hasil Analisis</div>", unsafe_allow_html=True):
-        pass
-    if st.button(" ", key="nav_hasil"):
-        st.session_state.page = "hasil"
-
-with nav2:
-    st.markdown("<div class='glass-nav'>❔ Mengapa RK4?</div>", unsafe_allow_html=True)
-    if st.button(" ", key="nav_rk4"):
-        st.session_state.page = "rk4info"
-
-with nav3:
-    st.markdown("<div class='glass-nav'>🔄 Reset Hasil</div>", unsafe_allow_html=True)
-    if st.button(" ", key="nav_reset"):
-        st.session_state.last_result = None
-        st.session_state.last_context = None
-        st.success("Riwayat berhasil dibersihkan.")
-
-with nav4:
-    st.markdown(f"<div class='glass-nav'>👁 {st.session_state.visitors} Pengunjung</div>", unsafe_allow_html=True)
+    a,b,c = st.columns(3)
+    with a:
+        if st.button("📊 Hasil Analisis Terakhir"):
+            st.session_state.page = "hasil"
+    with b:
+        if st.button("❔ Mengapa RK4?"):
+            st.session_state.page = "rk4info"
+    with c:
+        if st.button("🔄 Reset Hasil"):
+            st.session_state.last_result = None
+            st.session_state.last_context = None
+            st.success("Riwayat berhasil dibersihkan.")
 
     st.markdown("---")
     st.subheader("Contoh Template Data (Upload)")
