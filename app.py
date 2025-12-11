@@ -355,7 +355,7 @@ if st.session_state.page == "input":
                 )
             else:
                 st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
-                 render_normal_html()
+                render_normal_html()
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
@@ -456,7 +456,7 @@ if st.session_state.page == "personal":
             )
         else:
             st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
-                render_normal_html()
+            render_normal_html()
 
         # prediksi text
         if pred_s is not None:
