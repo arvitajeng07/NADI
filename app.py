@@ -1,4 +1,4 @@
-# app.py — NADI (RK4) — FINAL (NORMAL POPUP: fullscreen overlay)
+# app.py — NADI (RK4) — FINAL (Warning super-dramatic inline + Normal gemoy overlay)
 # ============================================================
 
 import streamlit as st
@@ -48,11 +48,15 @@ st.markdown(
 # -----------------------
 # AUDIO HELPERS (siren + ting)
 # -----------------------
-def generate_siren_wav(duration=1.8, sr=44100):
+def generate_siren_wav(duration=1.0, sr=44100):
+    # siren with pitch modulation (short)
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
-    mod = 0.5 * (1 + np.sin(2 * np.pi * 1.2 * t))
-    freq = 800 + 300 * np.sin(2 * np.pi * 0.6 * t)
-    tone = 0.6 * np.sin(2 * np.pi * freq * t) * (0.6 + 0.4 * mod)
+    mod = 0.5 * (1 + np.sin(2 * np.pi * 2.2 * t))  # faster mod for urgency
+    freq = 700 + 600 * np.sin(2 * np.pi * 1.0 * t)  # oscillating pitch
+    tone = 0.9 * np.sin(2 * np.pi * freq * t) * (0.6 + 0.4 * mod)
+    # apply short fade-out to avoid clicks
+    env = np.linspace(1, 0.01, len(t))
+    tone = tone * env
     tone = np.clip(tone, -1, 1)
     buf = BytesIO()
     sf.write(buf, tone, sr, format='WAV')
@@ -60,7 +64,6 @@ def generate_siren_wav(duration=1.8, sr=44100):
     return buf.read()
 
 def generate_ting_wav(duration=0.45, sr=44100):
-    # small pleasant "ting" composed of two short tones
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     tone1 = 0.7 * np.sin(2 * np.pi * 1400 * t) * np.linspace(1, 0, len(t))
     tone2 = 0.5 * np.sin(2 * np.pi * 1800 * t) * np.linspace(1, 0, len(t))
@@ -110,29 +113,15 @@ def detect_anomaly_df(df,
     return df
 
 # -----------------------
-# RENDER DRAMATIC (file-based) — WARNING
-# -----------------------
-def render_dramatic_html(path="warning_popup.html"):
-    if not os.path.exists(path):
-        st.error(f"File popup merah tidak ditemukan: {path}")
-        return
-    try:
-        html_code = open(path, "r", encoding="utf-8").read()
-        components.html(html_code, height=500, scrolling=False)
-    except Exception as e:
-        st.error(f"Gagal memuat {path}: {e}")
-
-# -----------------------
 # RENDER NORMAL — INLINE FULLSCREEN (overlay via st.markdown)
 # -----------------------
-def render_normal_overlay(datauri=None, duration_ms=2100):
-    # build HTML overlay string (safe, used via st.markdown)
+def render_normal_overlay(datauri=None, duration_ms=1800):
     audio_html = ""
     if datauri:
         audio_html = f'<audio autoplay><source src="{datauri}" type="audio/wav"></audio>'
 
     html = f"""
-    <div style="
+    <div id="normal-root" style="
         position:fixed; inset:0;
         background:rgba(0,0,0,0.5);
         backdrop-filter:blur(7px);
@@ -185,21 +174,80 @@ def render_normal_overlay(datauri=None, duration_ms=2100):
         100% {{ opacity:0; transform:scale(.3); }}
     }}
     </style>
-    """
 
-    # render overlay
+    <script>
+    setTimeout(function(){{
+        var el = document.getElementById('normal-root');
+        if(el && el.parentNode) el.parentNode.removeChild(el);
+    }}, {duration_ms});
+    </script>
+    """
     st.markdown(html, unsafe_allow_html=True)
-    # overlay will be in DOM but we want it to auto-disappear — we can't remove it from server side,
-    # rely on JS in file-based popups; here we let it stay for short time, then trigger a rerun to clear if needed.
-    # Sleep briefly to allow user to see the overlay (non-blocking UX tradeoff)
-    time.sleep(duration_ms / 1000.0)
-    # after waiting, we force a rerun to clear ephemeral overlay elements (Streamlit will refresh)
-    # Using st.experimental_rerun would re-run the entire app — avoid unless necessary.
-    # Instead, insert a tiny JS to remove overlay element immediately (works client-side)
-    st.markdown(
-        "<script>document.querySelectorAll('div[style*=\"position:fixed\"]').forEach(e=>{if(e && e.parentNode) e.remove();});</script>",
-        unsafe_allow_html=True,
-    )
+
+# -----------------------
+# RENDER WARNING — INLINE FULLSCREEN (super dramatic) + siren (1s)
+# -----------------------
+def render_warning_inline(duration_ms=1000):
+    wav = generate_siren_wav(duration=1.0)
+    datauri = wav_bytes_to_datauri(wav)
+    html = f"""
+    <div id="warn-root" style="
+        position:fixed; inset:0;
+        background:rgba(0,0,0,0.88);
+        backdrop-filter:blur(10px);
+        z-index:999999;
+        display:flex; justify-content:center; align-items:center;
+        animation:fadeIn .12s ease-out;
+    ">
+      <div style="
+            width:620px;
+            max-width:92%;
+            background:linear-gradient(135deg,#ff2d2d,#8b0000);
+            border-radius:30px;
+            padding:40px 32px;
+            text-align:center;
+            color:white;
+            box-shadow:0 40px 120px rgba(255,0,0,0.45);
+            animation:popWarn .9s cubic-bezier(.18,.89,.32,1.28);
+            position:relative;
+      ">
+        <div style="font-size:108px; margin-bottom:10px; filter:drop-shadow(0 0 28px rgba(255,0,0,1)); animation:glowWarn .4s infinite alternate;">🚨</div>
+        <h1 style="margin:0; font-size:40px; font-weight:900; letter-spacing:0.6px;">PERINGATAN TENSI TIDAK NORMAL!</h1>
+        <p style="font-size:20px; opacity:.95; margin-top:8px;">Hipertensi / hipotensi terdeteksi. Mohon cek ulang datamu.</p>
+      </div>
+
+      <audio autoplay>
+        <source src="{datauri}" type="audio/wav">
+      </audio>
+    </div>
+
+    <style>
+    @keyframes fadeIn {{ from {{ opacity:0; }} to {{ opacity:1; }} }}
+    @keyframes popWarn {{
+        0% {{ transform:scale(.28); opacity:0; }}
+        50% {{ transform:scale(1.18); opacity:1; }}
+        100% {{ transform:scale(1); opacity:1; }}
+    }}
+    @keyframes shakeWarn {{
+        0% {{ transform:translateX(0); }}
+        25% {{ transform:translateX(-18px); }}
+        50% {{ transform:translateX(14px); }}
+        75% {{ transform:translateX(-10px); }}
+        100% {{ transform:translateX(0); }}
+    }}
+    @keyframes glowWarn {{ from {{ filter:drop-shadow(0 0 18px rgba(255,80,80,0.85)); }} to {{ filter:drop-shadow(0 0 30px rgba(255,0,0,1)); }} }}
+    /* apply a short visible shake shortly after pop */
+    #warn-root > div {{ animation: popWarn .9s cubic-bezier(.18,.89,.32,1.28), shakeWarn .6s ease-in-out .12s; }}
+    </style>
+
+    <script>
+    setTimeout(function(){{
+        var el = document.getElementById('warn-root');
+        if(el && el.parentNode) el.parentNode.removeChild(el);
+    }}, {duration_ms});
+    </script>
+    """
+    st.markdown(html, unsafe_allow_html=True)
 
 # ============================================================
 # BERANDA / LANDING
@@ -330,16 +378,13 @@ if st.session_state.page == "input":
 
             if alert_needed:
                 st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:8])}")
-                render_dramatic_html()  # file-based dramatic popup
-                wav = generate_siren_wav(duration=1.8)
-                datauri = wav_bytes_to_datauri(wav)
-                # also play siren (non-loop)
-                st.markdown(f'<audio autoplay><source src="{datauri}" type="audio/wav"></audio>', unsafe_allow_html=True)
+                # show dramatic warning (inline) with siren for 1 second
+                render_warning_inline(duration_ms=1000)
             else:
                 # show gemoy normal overlay FIRST, then the success message
                 wav = generate_ting_wav(duration=0.45)
                 datauri = wav_bytes_to_datauri(wav)
-                render_normal_overlay(datauri=datauri, duration_ms=1800)
+                render_normal_overlay(datauri=datauri, duration_ms=1400)
                 st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
 
     if st.button("⬅ Kembali"):
@@ -409,15 +454,11 @@ if st.session_state.page == "personal":
         # anomaly handling
         if dfp["Anom_Total"].iloc[-1]:
             st.error("⚠️ Terdeteksi hipertensi / hipotensi!")
-            render_dramatic_html()
-            wav = generate_siren_wav(duration=1.8)
-            datauri = wav_bytes_to_datauri(wav)
-            st.markdown(f'<audio autoplay><source src="{datauri}" type="audio/wav"></audio>', unsafe_allow_html=True)
+            render_warning_inline(duration_ms=1000)
         else:
-            # normal: show gemoy overlay first, then success label
             wav = generate_ting_wav(duration=0.45)
             datauri = wav_bytes_to_datauri(wav)
-            render_normal_overlay(datauri=datauri, duration_ms=1800)
+            render_normal_overlay(datauri=datauri, duration_ms=1400)
             st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
 
         if pred_s is not None:
@@ -454,7 +495,7 @@ if st.session_state.page == "hasil":
 if st.session_state.page == "rk4info":
     st.header("❔ Mengapa Menggunakan Metode RK4?")
     st.markdown("""
-   Metode **Runge–Kutta Orde 4 (RK4)** adalah salah satu pendekatan numerik yang paling
+    Metode **Runge–Kutta Orde 4 (RK4)** adalah salah satu pendekatan numerik yang paling
     banyak digunakan ketika kita ingin memperkirakan nilai di masa depan berdasarkan data
     yang sudah ada. Dalam konteks aplikasi ini, RK4 dipakai untuk memperkirakan arah
     perubahan tekanan darah sehingga pengguna dapat melihat pola yang lebih halus dan
