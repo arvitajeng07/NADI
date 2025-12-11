@@ -1,5 +1,6 @@
-# app.py — NADI (RK4) — FINAL (pattern bergerak + normal gemoy + warning super-dramatic)
+# app.py — NADI (RK4) — FINAL (Warning super-dramatic inline + Normal gemoy overlay)
 # ============================================================
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -25,48 +26,20 @@ if "last_context" not in st.session_state:
     st.session_state.last_context = None
 
 # -----------------------
-# GLOBAL CSS (app look) + MOVING PATTERN
+# GLOBAL CSS (app look)
 # -----------------------
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     :root{ --bg1: #f3f9ff; --bg2: #eaf6ff; --primary-1: #0b63d9; --muted: #6b7280; }
-
     html, body, [class*="css"] { font-family: Inter, "Times New Roman", serif; background: linear-gradient(180deg, var(--bg1), var(--bg2)); }
-
-    /* TITLE */
     .big-nadi-title { font-family: "Times New Roman", serif; font-size:70px; font-weight:800; color:white !important; text-shadow:0 0 14px rgba(0,0,0,0.45); text-align:center; margin-top:4px; margin-bottom:8px; }
     .nadi-desc { text-align:center; color:var(--muted); max-width:920px; margin:auto; margin-bottom:18px; font-size:16px; line-height:1.45; }
-
-    /* Glass tiles */
     .glass { background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(246,251,255,0.88)); border-radius:14px; padding:18px; box-shadow:0 8px 28px rgba(11,99,217,0.06); border:1px solid rgba(255,255,255,0.6); transition: transform .18s ease, box-shadow .18s ease; }
     .glass:hover { transform: translateY(-6px); box-shadow:0 18px 40px rgba(11,99,217,0.09); }
     .spacer { margin-top:14px; margin-bottom:14px; }
     @media (max-width:600px) { .big-nadi-title { font-size:36px; } }
-
-    /* ====== HEALTHCARE MOVING PATTERN ====== */
-    body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        opacity: 0.10;
-        background-image:
-            url("https://i.ibb.co/8MmS2Xh/stetho.png"),
-            url("https://i.ibb.co/1TcfPjT/heartpulse.png"),
-            url("https://i.ibb.co/W2qQwxp/tensi.png");
-        background-repeat: repeat;
-        background-size: 180px, 150px, 170px;
-        filter: blur(0.4px);
-        animation: drift 60s linear infinite;
-    }
-    @keyframes drift {
-        0%   { background-position: 0px 0px, 0px 0px, 0px 0px; }
-        50%  { background-position: 200px 150px, 150px 200px, 250px 180px; }
-        100% { background-position: 0px 0px, 0px 0px, 0px 0px; }
-    }
-
     </style>
     """,
     unsafe_allow_html=True
@@ -75,13 +48,14 @@ st.markdown(
 # -----------------------
 # AUDIO HELPERS (siren + ting)
 # -----------------------
-def generate_siren_wav(duration=3.0, sr=44100):
-    # siren with pitch modulation (longer, urgent)
+def generate_siren_wav(duration=1.0, sr=44100):
+    # siren with pitch modulation (short)
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
-    mod = 0.5 * (1 + np.sin(2 * np.pi * 2.2 * t))
-    freq = 700 + 600 * np.sin(2 * np.pi * 1.0 * t)
+    mod = 0.5 * (1 + np.sin(2 * np.pi * 2.2 * t))  # faster mod for urgency
+    freq = 700 + 600 * np.sin(2 * np.pi * 1.0 * t)  # oscillating pitch
     tone = 0.9 * np.sin(2 * np.pi * freq * t) * (0.6 + 0.4 * mod)
-    env = np.linspace(1, 0.001, len(t))  # gentle fade to avoid clicks
+    # apply short fade-out to avoid clicks
+    env = np.linspace(1, 0.01, len(t))
     tone = tone * env
     tone = np.clip(tone, -1, 1)
     buf = BytesIO()
@@ -139,109 +113,89 @@ def detect_anomaly_df(df,
     return df
 
 # -----------------------
-# RENDER NORMAL POPUP (components.html for robust fullscreen)
+# RENDER NORMAL — INLINE FULLSCREEN (overlay via st.markdown)
 # -----------------------
-def render_normal_popup(duration_ms=2000):
-    # create tiny ting sound and embed as datauri
-    wav = generate_ting_wav(duration=0.45)
-    datauri = wav_bytes_to_datauri(wav)
+def render_normal_overlay(datauri=None, duration_ms=1800):
+    audio_html = ""
+    if datauri:
+        audio_html = f'<audio autoplay><source src="{datauri}" type="audio/wav"></audio>'
+
     html = f"""
-    <html>
-    <head>
-    <meta charset="utf-8" />
+    <div id="normal-root" style="
+        position:fixed; inset:0;
+        background:rgba(0,0,0,0.5);
+        backdrop-filter:blur(7px);
+        z-index:999999;
+        display:flex; justify-content:center; align-items:center;
+        animation:fadein .18s forwards;
+    ">
+      <div style="
+            width:520px;
+            background:linear-gradient(135deg,#00e09f,#00b46f);
+            border-radius:30px;
+            padding:32px;
+            text-align:center;
+            color:white;
+            box-shadow:0 40px 80px rgba(0,50,20,0.4);
+            animation:pop .35s cubic-bezier(.2,.9,.2,1);
+            position:relative;
+      ">
+        <div style="font-size:90px; margin-bottom:10px; animation:pulse 1.3s infinite; filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));">✔️</div>
+        <h2 style="margin:0; font-size:36px; font-weight:900;">Datamu Normal!</h2>
+        <p style="font-size:20px; opacity:0.95; margin-top:8px;">Jaga kesehatan yaaa!! 💚✨</p>
+      ">
+        <div style="position:absolute; top:-10px; left:70px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite;"></div>
+        <div style="position:absolute; top:-14px; right:60px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .3s;"></div>
+        <div style="position:absolute; bottom:-10px; left:80px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .6s;"></div>
+      </div>
+
+      {audio_html}
+    </div>
+
     <style>
     @keyframes pop {{
         0% {{ transform:scale(.4); opacity:0; }}
-        60% {{ transform:scale(1.18); opacity:1; }}
+        60% {{ transform:scale(1.12); opacity:1; }}
         100% {{ transform:scale(1); opacity:1; }}
     }}
-    @keyframes fadein {{ 0% {{ opacity:0; }} 100% {{ opacity:1; }} }}
-    @keyframes pulse {{ 0% {{ transform:scale(1); }} 50% {{ transform:scale(1.15); }} 100% {{ transform:scale(1); }} }}
-    @keyframes spark {{ 0% {{ opacity:0; transform:scale(.5); }} 25% {{ opacity:1; transform:scale(1.2) translateY(-8px); }} 70% {{ opacity:.4; transform:scale(1); }} 100% {{ opacity:0; transform:scale(.5); }} }}
+    @keyframes fadein {{
+        0% {{ opacity:0; }}
+        100% {{ opacity:1; }}
+    }}
+    @keyframes pulse {{
+        0% {{ transform:scale(1); }}
+        50% {{ transform:scale(1.22); }}
+        100% {{ transform:scale(1); }}
+    }}
+    @keyframes spark {{
+        0% {{ opacity:0; transform:scale(.3); }}
+        20% {{ opacity:1; transform:scale(1.4) translateY(-6px); }}
+        60% {{ opacity:.5; transform:scale(1) translateY(-2px); }}
+        100% {{ opacity:0; transform:scale(.3); }}
+    }}
     </style>
-    </head>
-    <body>
-    <div id="normal-popup-root" style="
-        position:fixed; inset:0;
-        background:rgba(0,0,0,0.45);
-        backdrop-filter:blur(7px);
-        z-index:999999999;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        animation:fadein .20s forwards;
-    ">
-      <div style="
-          width:520px;
-          background:linear-gradient(145deg,#00e09f,#00b46f);
-          border-radius:30px;
-          padding:32px;
-          text-align:center;
-          color:white;
-          box-shadow:0 40px 80px rgba(0,50,20,0.35);
-          animation:pop .35s cubic-bezier(.2,.9,.2,1);
-          position:relative;
-      ">
-        <div style="font-size:90px; margin-bottom:10px; animation:pulse 1.4s infinite; filter:drop-shadow(0 0 20px rgba(0,255,180,0.8));">✔️</div>
-        <h2 style="margin:0; font-size:36px; font-weight:900;">Datamu Normal!</h2>
-        <p style="font-size:20px; opacity:0.95; margin-top:8px;">Jaga kesehatan yaaa!! 💚✨</p>
-
-        <div style="position:absolute; top:-10px; left:70px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite;"></div>
-        <div style="position:absolute; top:-20px; right:80px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .3s;"></div>
-        <div style="position:absolute; bottom:-10px; left:85px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .6s;"></div>
-      </div>
-
-      <audio autoplay>
-        <source src="{datauri}" type="audio/wav">
-      </audio>
-    </div>
 
     <script>
     setTimeout(function(){{
-        var el = document.getElementById("normal-popup-root");
-        if (el && el.parentNode) el.parentNode.removeChild(el);
+        var el = document.getElementById('normal-root');
+        if(el && el.parentNode) el.parentNode.removeChild(el);
     }}, {duration_ms});
     </script>
-    </body>
-    </html>
     """
-    # use components.html with height=0 so iframe doesn't restrict fixed positioning
-    components.html(html, height=0, width=0)
+    st.markdown(html, unsafe_allow_html=True)
 
 # -----------------------
-# RENDER WARNING POPUP (inline dramatic + siren)
+# RENDER WARNING — INLINE FULLSCREEN (super dramatic) + siren (1s)
 # -----------------------
-def render_warning_inline(duration_ms=1000, siren_duration=3.0):
-    # siren audio
-    wav = generate_siren_wav(duration=siren_duration)
+def render_warning_inline(duration_ms=1000):
+    wav = generate_siren_wav(duration=1.0)
     datauri = wav_bytes_to_datauri(wav)
     html = f"""
-    <html>
-    <head>
-    <meta charset="utf-8" />
-    <style>
-    @keyframes fadeIn {{ from {{ opacity:0; }} to {{ opacity:1; }} }}
-    @keyframes popWarn {{
-        0% {{ transform:scale(.28); opacity:0; }}
-        50% {{ transform:scale(1.18); opacity:1; }}
-        100% {{ transform:scale(1); opacity:1; }}
-    }}
-    @keyframes shakeWarn {{
-        0% {{ transform:translateX(0); }}
-        25% {{ transform:translateX(-18px); }}
-        50% {{ transform:translateX(14px); }}
-        75% {{ transform:translateX(-10px); }}
-        100% {{ transform:translateX(0); }}
-    }}
-    @keyframes glowWarn {{ from {{ filter:drop-shadow(0 0 18px rgba(255,80,80,0.85)); }} to {{ filter:drop-shadow(0 0 30px rgba(255,0,0,1)); }} }}
-    </style>
-    </head>
-    <body>
     <div id="warn-root" style="
         position:fixed; inset:0;
         background:rgba(0,0,0,0.88);
         backdrop-filter:blur(10px);
-        z-index:999999999;
+        z-index:999999;
         display:flex; justify-content:center; align-items:center;
         animation:fadeIn .12s ease-out;
     ">
@@ -267,16 +221,33 @@ def render_warning_inline(duration_ms=1000, siren_duration=3.0):
       </audio>
     </div>
 
+    <style>
+    @keyframes fadeIn {{ from {{ opacity:0; }} to {{ opacity:1; }} }}
+    @keyframes popWarn {{
+        0% {{ transform:scale(.28); opacity:0; }}
+        50% {{ transform:scale(1.18); opacity:1; }}
+        100% {{ transform:scale(1); opacity:1; }}
+    }}
+    @keyframes shakeWarn {{
+        0% {{ transform:translateX(0); }}
+        25% {{ transform:translateX(-18px); }}
+        50% {{ transform:translateX(14px); }}
+        75% {{ transform:translateX(-10px); }}
+        100% {{ transform:translateX(0); }}
+    }}
+    @keyframes glowWarn {{ from {{ filter:drop-shadow(0 0 18px rgba(255,80,80,0.85)); }} to {{ filter:drop-shadow(0 0 30px rgba(255,0,0,1)); }} }}
+    /* apply a short visible shake shortly after pop */
+    #warn-root > div {{ animation: popWarn .9s cubic-bezier(.18,.89,.32,1.28), shakeWarn .6s ease-in-out .12s; }}
+    </style>
+
     <script>
     setTimeout(function(){{
-        var el = document.getElementById("warn-root");
-        if (el && el.parentNode) el.parentNode.removeChild(el);
+        var el = document.getElementById('warn-root');
+        if(el && el.parentNode) el.parentNode.removeChild(el);
     }}, {duration_ms});
     </script>
-    </body>
-    </html>
     """
-    components.html(html, height=0, width=0)
+    st.markdown(html, unsafe_allow_html=True)
 
 # ============================================================
 # BERANDA / LANDING
@@ -306,15 +277,6 @@ if st.session_state.page == "beranda":
         if st.button("➡ Masuk ke Personal", key="go_personal"):
             st.session_state.page = "personal"
         st.markdown("</div>", unsafe_allow_html=True)
-
-    # debugging buttons (optional)
-    col_dbg1, col_dbg2 = st.columns([1,1])
-    with col_dbg1:
-        if st.button("🔔 Test Warning"):
-            render_warning_inline(duration_ms=1000, siren_duration=3.0)
-    with col_dbg2:
-        if st.button("✅ Test Normal"):
-            render_normal_popup(duration_ms=2000)
 
     a,b,c = st.columns(3)
     with a:
@@ -416,11 +378,13 @@ if st.session_state.page == "input":
 
             if alert_needed:
                 st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:8])}")
-                # show dramatic warning (inline) with siren for 3 seconds
-                render_warning_inline(duration_ms=1000, siren_duration=3.0)
+                # show dramatic warning (inline) with siren for 1 second
+                render_warning_inline(duration_ms=1000)
             else:
                 # show gemoy normal overlay FIRST, then the success message
-                render_normal_popup(duration_ms=2000)
+                wav = generate_ting_wav(duration=0.45)
+                datauri = wav_bytes_to_datauri(wav)
+                render_normal_overlay(datauri=datauri, duration_ms=1400)
                 st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
 
     if st.button("⬅ Kembali"):
@@ -490,9 +454,11 @@ if st.session_state.page == "personal":
         # anomaly handling
         if dfp["Anom_Total"].iloc[-1]:
             st.error("⚠️ Terdeteksi hipertensi / hipotensi!")
-            render_warning_inline(duration_ms=1000, siren_duration=3.0)
+            render_warning_inline(duration_ms=1000)
         else:
-            render_normal_popup(duration_ms=2000)
+            wav = generate_ting_wav(duration=0.45)
+            datauri = wav_bytes_to_datauri(wav)
+            render_normal_overlay(datauri=datauri, duration_ms=1400)
             st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
 
         if pred_s is not None:
@@ -525,7 +491,7 @@ if st.session_state.page == "hasil":
 
 # ============================================================
 # WHY RK4
-# ============================================================ 
+# ============================================================
 if st.session_state.page == "rk4info":
     st.header("❔ Mengapa Menggunakan Metode RK4?")
     st.markdown("""
