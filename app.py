@@ -1,15 +1,5 @@
 """
-APP.PY FINAL — Sudah mencakup:
-
-✔ Judul putih + Times New Roman + emot ❤️
-✔ Deteksi anomali hanya hipertensi & hipotensi
-✔ Popup merah (warning_popup.html)
-✔ Popup hijau normal + bunyi “tring” 0.8s
-✔ Alarm sirine anomali 0.8s
-✔ Halaman RK4 versi naratif (tanpa rumus)
-✔ Navigasi lengkap
-✔ Tampilan aesthetic biru tetap
-"""
+APP.PY FINAL 
 
 # ============================================================
 # ===================== IMPORT LIBRARY ========================
@@ -18,13 +8,14 @@ APP.PY FINAL — Sudah mencakup:
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
-import soundfile as sf
-from datetime import datetime, timedelta
-import streamlit.components.v1 as components
 import time
+import base64
+import math
+from datetime import datetime
+import matplotlib.pyplot as plt
+import soundfile as sf
+from io import BytesIO
+import streamlit.components.v1 as components
 
 
 # ============================================================
@@ -119,35 +110,26 @@ st.markdown(
 # ===================== AUDIO GENERATOR =======================
 # ============================================================
 
-# -------------------------
-# 1) Sirine untuk anomali
-# -------------------------
-def generate_siren_wav(duration=0.5, sr=44100):
-    t = np.linspace(0, duration, int(sr * duration), endpoint=False)
-    freq = 900 + 180 * np.sin(2 * np.pi * 2 * t)
-    tone = 0.7 * np.sin(2 * np.pi * freq * t)
-    tone *= np.linspace(1, 0, len(t))
-    buf = BytesIO()
-    sf.write(buf, tone, sr, format="WAV")
-    buf.seek(0)
-    return buf.read()
-
-
-# -------------------------
-# 2) Ting normal (success)
-# -------------------------
-def generate_ting_wav(duration=0.5, sr=44100):
+def generate_ting_wav(duration=0.8, sr=44100):
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     freq = 2000
     tone = 0.8 * np.sin(2 * np.pi * freq * t)
     tone *= np.linspace(1, 0, len(t))
-    buf = BytesIO()
-    sf.write(buf, tone, sr, format="WAV")
-    buf.seek(0)
-    return buf.read()
+    buffer = BytesIO()
+    sf.write(buffer, tone, sr, format="WAV")
+    buffer.seek(0)
+    return buffer.read()
 
+def generate_siren_wav(duration=0.8, sr=44100):
+    t = np.linspace(0, duration, int(sr * duration), endpoint=False)
+    freq = 900 + 180 * np.sin(2 * np.pi * 2 * t)
+    tone = 0.7 * np.sin(2 * np.pi * freq * t)
+    tone *= np.linspace(1, 0, len(t))
+    buffer = BytesIO()
+    sf.write(buffer, tone, sr, format="WAV")
+    buffer.seek(0)
+    return buffer.read()
 
-# Convert WAV → base64 data URI
 def wav_bytes_to_datauri(wav_bytes):
     b64 = base64.b64encode(wav_bytes).decode()
     return f"data:audio/wav;base64,{b64}"
@@ -213,20 +195,23 @@ def detect_anomaly_df(df):
 # ------------------------------
 # 1) Popup merah dramatis (HTML)
 # ------------------------------
-def render_dramatic_html():
-    html = open("warning_popup.html", "r", encoding="utf-8").read()
-    components.html(html, height=500, scrolling=False)
+def warning_popup():
+    try:
+        html = open("warning_popup.html", "r", encoding="utf-8").read()
+        components.html(html, height=520, scrolling=False)
+    except:
+        st.error("File warning_popup.html tidak ditemukan.")
 
 
 # ------------------------------
 # 2) Popup hijau (data normal)
 # ------------------------------
-def render_normal_popup():
+def normal_popup():
     try:
         html = open("normal_popup.html", "r", encoding="utf-8").read()
         components.html(html, height=520, scrolling=False)
     except:
-        st.error("normal_popup.html tidak ditemukan.")
+        st.error("File normal_popup.html tidak ditemukan.")
 
 
 # ============================================================
@@ -396,60 +381,41 @@ if st.session_state.page == "input":
             st.session_state.last_result = result
             st.session_state.last_context = {"mode":"Input", "file": uploaded.name}
 
-            # jika ada alert → panggil dramatic popup HTML + sirine singkat
             if alert_needed:
-                st.error(f"🚨 Terdeteksi pasien dengan hipertensi/hipotensi: {', '.join(alert_names[:6])}")
+    st.error(f"🚨 Terdeteksi pasien dengan hipertensi/hipotensi: {', '.join(alert_names[:6])}")
 
-                # 1) panggil popup merah (file HTML yang kamu sediakan)
-                render_dramatic_html()
+    # Popup merah dramatic
+    render_dramatic_html()
 
-                # 2) bunyi sirine singkat (0.8s)
-                wav = generate_siren_wav()  # default 0.8s
-                datauri = wav_bytes_to_datauri(wav)
+    # Bunyi sirine singkat (0.8s, tanpa loop)
+    wav = generate_siren_wav()
+    datauri = wav_bytes_to_datauri(wav)
+    st.markdown(
+        f"""
+        <audio autoplay>
+            <source src="{datauri}" type="audio/wav">
+        </audio>
+        """,
+        unsafe_allow_html=True
+    )
 
-                # beri delay kecil supaya popup terlihat dulu
-                time.sleep(1.4)
+else:
+    st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
 
-                # tampilkan overlay alarm fullscreen dengan audio loop
-                st.markdown(
-                    f"""
-                    <div style="position:fixed; inset:0; background:rgba(0,0,0,0.6);
-                                backdrop-filter:blur(3px); z-index:999999; display:flex;
-                                justify-content:center; align-items:center;">
-                        <div style="text-align:center; color:white;">
-                            <h1>🚨 PERINGATAN: Hipertensi / Hipotensi Terdeteksi!</h1>
-                            <audio autoplay loop>
-                                <source src="{datauri}" type="audio/wav">
-                            </audio>
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+    # Popup hijau dramatic
+    render_normal_popup()
 
-            else:
-                # jika tidak ada anomali → popup hijau + bunyi ting
-                st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
-
-                # 1) popup hijau
-                render_normal_popup.html()
-
-                # 2) bunyi 'tring' singkat
-                wav = generate_ting_wav()  # default 0.8s
-                datauri = wav_bytes_to_datauri(wav)
-                st.markdown(
-                    f"""
-                    <audio autoplay>
-                        <source src="{datauri}" type="audio/wav">
-                    </audio>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-    # tombol kembali
-    if st.button("⬅ Kembali"):
-        st.session_state.page = "beranda"
-    st.stop()
+    # Bunyi 'tring' singkat
+    wav = generate_ting_wav()
+    datauri = wav_bytes_to_datauri(wav)
+    st.markdown(
+        f"""
+        <audio autoplay>
+            <source src="{datauri}" type="audio/wav">
+        </audio>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # ============================================================
@@ -521,48 +487,43 @@ if st.session_state.page == "personal":
         ax.legend()
         st.pyplot(fig)
 
-        # jika data terakhir anomali → popup merah + sirine
-        if dfp["Anom_Total"].iloc[-1]:
-            st.error("⚠️ Terdeteksi hipertensi / hipotensi pada data terakhir!")
+       # jika data terakhir anomali → popup merah + sirine
+if dfp["Anom_Total"].iloc[-1]:
+    st.error("⚠️ Terdeteksi hipertensi / hipotensi pada data terakhir!")
 
-            # panggil popup merah (HTML)
-            render_dramatic_html()
+    # popup merah dramatic (HTML)
+    render_dramatic_html()
 
-            # bunyi sirine singkat (0.8s)
-            wav = generate_siren_wav()
-            datauri = wav_bytes_to_datauri(wav)
-            time.sleep(1.4)  # beri jeda supaya popup terlihat dulu
+    # bunyi sirine singkat (0.8s, tanpa loop)
+    wav = generate_siren_wav()
+    datauri = wav_bytes_to_datauri(wav)
+    st.markdown(
+        f"""
+        <audio autoplay>
+            <source src="{datauri}" type="audio/wav">
+        </audio>
+        """,
+        unsafe_allow_html=True
+    )
 
-            st.markdown(
-                f"""
-                <div style="position:fixed; inset:0; background:rgba(0,0,0,0.6);
-                            backdrop-filter:blur(3px); z-index:999999; display:flex;
-                            justify-content:center; align-items:center;">
-                    <div style="text-align:center; color:white;">
-                        <h1>🚨 PERINGATAN: Nilai Tensi Tidak Normal!</h1>
-                        <audio autoplay loop>
-                            <source src="{datauri}" type="audio/wav">
-                        </audio>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+else:
+    # data normal → popup hijau + bunyi 'tring'
+    st.success("✔ Datamu normal. Jaga Kesehatann yaa!!!")
 
-        else:
-            # data normal → popup hijau + bunyi 'tring'
-            st.success("✔ Data normal.")
-            render_normal_popup()
-            wav = generate_ting_wav()
-            datauri = wav_bytes_to_datauri(wav)
-            st.markdown(
-                f"""
-                <audio autoplay>
-                    <source src="{datauri}" type="audio/wav">
-                </audio>
-                """,
-                unsafe_allow_html=True
-            )
+    # popup normal dramatic (HTML)
+    render_normal_popup()
+
+    # bunyi singkat 'tring'
+    wav = generate_ting_wav()
+    datauri = wav_bytes_to_datauri(wav)
+    st.markdown(
+        f"""
+        <audio autoplay>
+            <source src="{datauri}" type="audio/wav">
+        </audio>
+        """,
+        unsafe_allow_html=True
+    )
 
         # tampilkan prediksi singkat
         if pred_s is not None:
@@ -576,6 +537,7 @@ if st.session_state.page == "personal":
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
     st.stop()
+
 # ============================================================
 # ==================   HALAMAN HASIL ANALISIS   ==============
 # ============================================================
