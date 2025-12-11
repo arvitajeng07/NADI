@@ -1,4 +1,4 @@
-# app.py — NADI (RK4) — FINAL (Warning super-dramatic inline + Normal gemoy overlay)
+# app.py — NADI (RK4) — FINAL
 # ============================================================
 
 import streamlit as st
@@ -48,7 +48,7 @@ st.markdown(
 # -----------------------
 # AUDIO HELPERS (siren + ting)
 # -----------------------
-def generate_siren_wav(duration=1.0, sr=44100):
+def generate_siren_wav(duration=3.0, sr=44100):
     # siren with pitch modulation (short)
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     mod = 0.5 * (1 + np.sin(2 * np.pi * 2.2 * t))  # faster mod for urgency
@@ -63,7 +63,7 @@ def generate_siren_wav(duration=1.0, sr=44100):
     buf.seek(0)
     return buf.read()
 
-def generate_ting_wav(duration=0.45, sr=44100):
+def generate_ting_wav(duration=1.0, sr=44100):
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     tone1 = 0.7 * np.sin(2 * np.pi * 1400 * t) * np.linspace(1, 0, len(t))
     tone2 = 0.5 * np.sin(2 * np.pi * 1800 * t) * np.linspace(1, 0, len(t))
@@ -116,6 +116,7 @@ def detect_anomaly_df(df,
 # RENDER NORMAL — INLINE FULLSCREEN (overlay via st.markdown)
 # -----------------------
 def render_normal_overlay(datauri=None, duration_ms=1800):
+
     audio_html = ""
     if datauri:
         audio_html = f'<audio autoplay><source src="{datauri}" type="audio/wav"></audio>'
@@ -123,13 +124,16 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
     html = f"""
     <div id="normal-root" style="
         position:fixed; inset:0;
-        background:rgba(0,0,0,0.5);
+        background:rgba(0,0,0,0.45);
         backdrop-filter:blur(7px);
         z-index:999999;
-        display:flex; justify-content:center; align-items:center;
+        display:flex;
+        justify-content:center;
+        align-items:center;
         animation:fadein .18s forwards;
     ">
-      <div style="
+
+        <div style="
             width:520px;
             background:linear-gradient(135deg,#00e09f,#00b46f);
             border-radius:30px;
@@ -139,37 +143,87 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
             box-shadow:0 40px 80px rgba(0,50,20,0.4);
             animation:pop .35s cubic-bezier(.2,.9,.2,1);
             position:relative;
-      ">
-        <div style="font-size:90px; margin-bottom:10px; animation:pulse 1.3s infinite; filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));">✔️</div>
-        <h2 style="margin:0; font-size:36px; font-weight:900;">Datamu Normal!</h2>
-        <p style="font-size:20px; opacity:0.95; margin-top:8px;">Jaga kesehatan yaaa!! 💚✨</p>
+        ">
 
-        <div style="position:absolute; top:-10px; left:70px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite;"></div>
-        <div style="position:absolute; top:-14px; right:60px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .3s;"></div>
-        <div style="position:absolute; bottom:-10px; left:80px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .6s;"></div>
-      </div>
+            <div style="
+                font-size:90px;
+                margin-bottom:10px;
+                animation:pulse 1.3s infinite;
+                filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));
+            ">✔️</div>
 
-      {audio_html}
+            <h2 style="margin:0; font-size:48px; font-weight:900;">
+                Datamu Normal!
+            </h2>
+
+            <p style="font-size:27px; opacity:0.95; margin-top:8px;">
+                Jaga kesehatan yaaa!! 💚✨
+            </p>
+
+            <!-- SPARKLES FIXED -->
+            <div style="
+                position:absolute; 
+                top:-10px; 
+                left:70px;
+                width:14px; height:14px; 
+                background:white; 
+                border-radius:50%; 
+                opacity:0;
+                box-shadow:0 0 14px white;
+                animation:spark 1.5s infinite;
+            "></div>
+
+            <div style="
+                position:absolute; 
+                top:-14px; 
+                right:60px;
+                width:14px; height:14px; 
+                background:white; 
+                border-radius:50%; 
+                opacity:0;
+                box-shadow:0 0 14px white;
+                animation:spark 1.5s infinite .3s;
+            "></div>
+
+            <div style="
+                position:absolute; 
+                bottom:-10px; 
+                left:80px;
+                width:14px; height:14px; 
+                background:white; 
+                border-radius:50%; 
+                opacity:0;
+                box-shadow:0 0 14px white;
+                animation:spark 1.5s infinite .6s;
+            "></div>
+
+        </div>
+
+        {audio_html}
+
     </div>
 
     <style>
     @keyframes pop {{
         0% {{ transform:scale(.4); opacity:0; }}
-        60% {{ transform:scale(1.12); opacity:1; }}
+        60% {{ transform:scale(1.15); opacity:1; }}
         100% {{ transform:scale(1); opacity:1; }}
     }}
+
     @keyframes fadein {{
         0% {{ opacity:0; }}
         100% {{ opacity:1; }}
     }}
+
     @keyframes pulse {{
         0% {{ transform:scale(1); }}
-        50% {{ transform:scale(1.22); }}
+        50% {{ transform:scale(1.18); }}
         100% {{ transform:scale(1); }}
     }}
+
     @keyframes spark {{
         0% {{ opacity:0; transform:scale(.3); }}
-        20% {{ opacity:1; transform:scale(1.4) translateY(-6px); }}
+        20% {{ opacity:1; transform:scale(1.3) translateY(-6px); }}
         60% {{ opacity:.5; transform:scale(1) translateY(-2px); }}
         100% {{ opacity:0; transform:scale(.3); }}
     }}
@@ -182,6 +236,7 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
     }}, {duration_ms});
     </script>
     """
+
     st.markdown(html, unsafe_allow_html=True)
 
 # -----------------------
@@ -264,7 +319,7 @@ if st.session_state.page == "beranda":
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("<div class='glass'><h3 style='color:var(--primary-1)'>Input Data (Puskesmas / Klinik)</h3>"
-                    "<p style='color:var(--muted)'>Upload CSV/XLSX berisi banyak pasien untuk analisis massal menggunakan RK4.</p>"
+                    "<p style='color:var(--muted)'>Upload CSV/XLSX berisi banyak pasien. Sistem akan memproses tiap pasien, mendeteksi hipertensi/hipotensi, dan memprediksi nilai berikutnya.</p>"
                     "<div class='spacer'></div>", unsafe_allow_html=True)
         if st.button("➡ Masuk ke Input Data", key="go_input"):
             st.session_state.page = "input"
@@ -294,7 +349,7 @@ if st.session_state.page == "beranda":
     st.markdown("---")
     st.subheader("Contoh Template Data (Upload)")
     sample_df = pd.DataFrame({
-        "Nama": ["Budi","Budi","Siti","Siti"],
+        "Nama": ["Adi","Adi","Tika","Tika"],
         "Tanggal": [
             datetime.now().date()-timedelta(days=3),
             datetime.now().date()-timedelta(days=1),
