@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 from io import BytesIO
 import streamlit.components.v1 as components
+from streamlit.components.v1 import html
+
 
 # ============================================================
 # ===================== PAGE CONFIG ===========================
@@ -159,152 +161,108 @@ def detect_anomaly_df(df):
 
 # Warning (red) dramatic popup — full-screen with blur and siren icon
 def warning_popup():
-    # create HTML with backdrop blur, animated popup, and siren icon
-    html = f"""
+    html = """
     <style>
-    .popup-root {{
+    .popup-root {
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(8px);
       display:flex;
       align-items:center;
       justify-content:center;
-      z-index:999999;
-    }}
-    .popup-box {{
-      width: 560px;
-      background: linear-gradient(135deg, rgba(255,80,80,0.98), rgba(180,10,10,0.98));
-      border-radius: 18px;
+      z-index:999999 !important;
+    }
+    .popup-box {
+      width: 520px;
+      background: linear-gradient(135deg, #ff4444, #b00000);
+      border-radius: 22px;
       padding: 40px;
       text-align:center;
       color: white;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-      transform-origin: center;
-      animation: popin .36s ease-out;
-      border: 2px solid rgba(255,0,0,0.24);
-    }}
-    .sirene-icon {{
-      width: 110px;
-      height: 110px;
-      margin: 0 auto 16px;
-      background: radial-gradient(circle at 30% 30%, #fff4, #ffdddd);
-      border-radius: 50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:64px;
-      box-shadow: 0 8px 30px rgba(255,0,0,0.35);
-    }}
-    .popup-title {{
-      font-size:28px;
-      font-weight:800;
-      margin-bottom:10px;
-      text-shadow: 0 0 12px rgba(255,80,80,0.6);
-    }}
-    .popup-msg {{
-      font-size:16px;
-      color: rgba(255,255,255,0.95);
-      line-height:1.4;
-      margin-bottom:14px;
-    }}
-    @keyframes popin {{
-      0% {{ transform: scale(0.6); opacity:0; }}
-      60% {{ transform: scale(1.04); opacity:1; }}
-      100% {{ transform: scale(1); opacity:1; }}
-    }}
+      box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+      animation: popin 0.35s ease-out;
+      border: 2px solid rgba(255,255,255,0.25);
+    }
+    .icon {
+      font-size: 80px;
+      margin-bottom: 14px;
+      text-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+    }
+    @keyframes popin {
+      0% { transform: scale(0.5); opacity:0; }
+      60% { transform: scale(1.07); opacity:1; }
+      100% { transform: scale(1); opacity:1; }
+    }
     </style>
 
     <div class="popup-root" id="popup-root">
       <div class="popup-box">
-        <div class="sirene-icon">🚨</div>
-        <div class="popup-title">PERINGATAN ANOMALI</div>
-        <div class="popup-msg">Terdeteksi nilai tekanan darah di luar rentang normal. Silakan cek data pasien dan tindak lanjuti ke profesional kesehatan jika perlu.</div>
+        <div class="icon">🚨</div>
+        <h2 style="margin:0; font-size:32px; font-weight:900;">PERINGATAN</h2>
+        <p style="font-size:20px; opacity:0.95;">
+          Terdeteksi <b>Hipertensi / Hipotensi</b><br>
+          Silakan cek data pasien.
+        </p>
       </div>
     </div>
 
     <script>
-    // auto remove after 1600ms so it doesn't permanently block UI
-    setTimeout(()=>{{
-       const e = document.getElementById('popup-root');
-       if(e) e.style.display='none';
-    }}, 1600);
+    setTimeout(() => {
+       const e = document.getElementById("popup-root");
+       if (e) e.remove();
+    }, 1700);
     </script>
     """
-    components.html(html, height=600, scrolling=False)
+    components.html(html, height=0, width=0, scrolling=False)
+
 
 # Normal (green) dramatic popup — full-screen with blur and check icon
 def normal_popup():
-    html = f"""
+    html = """
     <style>
-    .popup-root-green {{
+    .pop-green {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.6);
+      background: rgba(0,0,0,0.55);
       backdrop-filter: blur(6px);
       display:flex;
       align-items:center;
       justify-content:center;
-      z-index:999999;
-    }}
-    .popup-box-green {{
-      width: 520px;
-      background: linear-gradient(135deg, rgba(0,200,80,0.95), rgba(20,220,120,0.95));
-      border-radius: 18px;
-      padding: 40px;
+      z-index:999999 !important;
+    }
+    .box-green {
+      background: linear-gradient(135deg, #00b35a, #38ff9f);
+      padding: 44px 50px;
+      border-radius: 22px;
       text-align:center;
       color: white;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      animation: popin .36s ease-out;
-      border: 2px solid rgba(0,255,128,0.25);
-    }}
-    .check-icon {{
-      width: 110px;
-      height: 110px;
-      margin: 0 auto 16px;
-      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-      border-radius: 50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:64px;
-      box-shadow: 0 8px 30px rgba(0,255,128,0.18);
-    }}
-    .popup-title-green {{
-      font-size:28px;
-      font-weight:800;
-      margin-bottom:10px;
-      text-shadow: 0 0 10px rgba(0,255,128,0.4);
-    }}
-    .popup-msg-green {{
-      font-size:16px;
-      color: rgba(255,255,255,0.95);
-      line-height:1.4;
-      margin-bottom:14px;
-    }}
-    @keyframes popin {{
-      0% {{ transform: scale(0.6); opacity:0; }}
-      60% {{ transform: scale(1.04); opacity:1; }}
-      100% {{ transform: scale(1); opacity:1; }}
-    }}
+      animation: zoomIn 0.4s ease-out;
+      box-shadow:0 0 30px rgba(0,0,0,0.4);
+    }
+    @keyframes zoomIn {
+      from { transform:scale(0.5); opacity:0; }
+      to   { transform:scale(1); opacity:1; }
+    }
     </style>
 
-    <div class="popup-root-green" id="popup-root-green">
-      <div class="popup-box-green">
-        <div class="check-icon">✔️</div>
-        <div class="popup-title-green">Datamu Normal</div>
-        <div class="popup-msg-green">Data terdeteksi normal. Tetap jaga kesehatan ya!</div>
+    <div class="pop-green" id="pop-green">
+      <div class="box-green">
+         <div style="font-size:70px; margin-bottom:10px; filter:drop-shadow(0 0 10px #00ff99);">✔️</div>
+         <h2 style="margin:0; font-size:30px; font-weight:900;">DATAMU NORMAL</h2>
+         <p style="font-size:20px; opacity:0.95;">Jaga kesehatan ya!!! 💚✨</p>
       </div>
     </div>
 
     <script>
-    setTimeout(()=>{{
-       const e = document.getElementById('popup-root-green');
-       if(e) e.style.display='none';
-    }}, 1400);
+    setTimeout(() => {
+        const e = document.getElementById("pop-green");
+        if (e) e.remove();
+    }, 1600);
     </script>
     """
-    components.html(html, height=560, scrolling=False)
+    components.html(html, height=0, width=0, scrolling=False)
+
 
 # ============================================================
 # ====================   BERANDA / LANDING   =================
@@ -469,37 +427,37 @@ if st.session_state.page == "input":
                     unsafe_allow_html=True
                 )
             else:
-    # DATA NORMAL → popup hijau dramatic + suara ting singkat
-    st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
-
-    # --- DRAMATIC POPUP NORMAL (INLINE HTML) ---
-    html = """
-    <div style="
-        position:fixed; inset:0;
-        background:rgba(0,0,0,0.55);
-        backdrop-filter:blur(6px);
-        display:flex; justify-content:center; align-items:center;
-        z-index:999999;
-    ">
-        <div style="
-            background:linear-gradient(135deg,#008f39,#3ddc84);
-            padding:50px 70px;
-            border-radius:25px;
-            text-align:center;
-            color:white;
-            box-shadow:0 0 35px rgba(0,0,0,0.4);
-            animation:zoomIn 0.3s ease-out;
-        ">
-            <div style="font-size:80px; margin-bottom:15px; filter:drop-shadow(0 0 12px #00ff88);">
+    		# DATA NORMAL → popup hijau dramatic + suara ting singkat
+    		st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
+	
+    		# --- DRAMATIC POPUP NORMAL (INLINE HTML) ---
+    		html = """
+    		<div style="
+        		position:fixed; inset:0;
+        		background:rgba(0,0,0,0.55);
+        		backdrop-filter:blur(6px);
+        		display:flex; justify-content:center; align-items:center;
+        		z-index:999999;
+    		">
+        	<div style="
+            	background:linear-gradient(135deg,#008f39,#3ddc84);
+            	padding:50px 70px;
+            	border-radius:25px;
+            	text-align:center;
+            	color:white;
+            	box-shadow:0 0 35px rgba(0,0,0,0.4);
+            	animation:zoomIn 0.3s ease-out;
+        		">
+            	<div style="font-size:80px; margin-bottom:15px; filter:drop-shadow(0 0 12px #00ff88);">
                 ✔️
-            </div>
-            <div style="font-size:34px; font-weight:900; margin-bottom:8px;">
+          	  </div>
+            	<div style="font-size:34px; font-weight:900; margin-bottom:8px;">
                 DATA NORMAL
-            </div>
-            <div style="font-size:22px; opacity:0.95;">
-                Datamu normal, Jaga kesehatan yaaa!!! 💚✨
-            </div>
-        </div>
+            	</div>
+            	<div style="font-size:22px; opacity:0.95;">
+            	    Datamu normal, Jaga kesehatan yaaa!!! 💚✨
+            	</div>
+     	   	</div>
     </div>
 
     <style>
