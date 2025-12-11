@@ -1,6 +1,12 @@
-
+# app.py — FINAL (uses external warning_popup.html & normal_popup.html)
 # ============================================================
-# APP.PY — NADI (RK4) FINAL (GEMOY 200%)
+# NADI (RK4) — Final ready-to-run Streamlit app
+# Popup HTML files required in same folder:
+#  - warning_popup.html
+#  - normal_popup.html
+#
+# Run:
+#   streamlit run app.py
 # ============================================================
 
 import streamlit as st
@@ -14,11 +20,12 @@ from datetime import datetime, timedelta
 import streamlit.components.v1 as components
 import time
 import math
+import os
 
 # -----------------------
 # Page config & session
 # -----------------------
-st.set_page_config(page_title="NADI (RK4) — Soft Blue (GEMOY)", layout="wide")
+st.set_page_config(page_title="NADI (RK4) — Soft Blue (FINAL)", layout="wide")
 
 if "page" not in st.session_state:
     st.session_state.page = "beranda"
@@ -28,7 +35,7 @@ if "last_context" not in st.session_state:
     st.session_state.last_context = None
 
 # -----------------------
-# Global CSS (app look)
+# GLOBAL CSS (app look)
 # -----------------------
 st.markdown(
     """
@@ -83,7 +90,6 @@ st.markdown(
     }
     .spacer { margin-top: 14px; margin-bottom: 14px; }
 
-    /* small responsive */
     @media (max-width:600px) {
       .big-nadi-title { font-size: 36px; }
     }
@@ -93,7 +99,7 @@ st.markdown(
 )
 
 # -----------------------
-# Audio helpers (siren + ting)
+# AUDIO HELPERS (siren + ting)
 # -----------------------
 def generate_siren_wav(duration=1.8, sr=44100):
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
@@ -108,7 +114,6 @@ def generate_siren_wav(duration=1.8, sr=44100):
 
 def generate_ting_wav(duration=0.45, sr=44100):
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
-    # layering two short tones for a pleasing "ting"
     tone1 = 0.7 * np.sin(2 * np.pi * 1400 * t) * np.linspace(1, 0, len(t))
     tone2 = 0.5 * np.sin(2 * np.pi * 1800 * t) * np.linspace(1, 0, len(t))
     tone = tone1 + 0.6 * tone2
@@ -123,7 +128,7 @@ def wav_bytes_to_datauri(wav_bytes):
     return f"data:audio/wav;base64,{b64}"
 
 # -----------------------
-# RK4 helpers
+# RK4 PREDICTION
 # -----------------------
 def rk4_predict_value(last, prev, h=1.0):
     slope = last - prev
@@ -141,7 +146,7 @@ def rk4_predict_series(arr):
     return rk4_predict_value(arr[-1], arr[-2])
 
 # -----------------------
-# Anomaly detection
+# ANOMALY DETECTION
 # -----------------------
 def detect_anomaly_df(df,
                       thresh_sys_high=140,
@@ -157,226 +162,38 @@ def detect_anomaly_df(df,
     return df
 
 # -----------------------
-# DRAMATIC WARNING POPUP (red) — full-screen, shake + glow
+# RENDER HTML POPUPS FROM FILES
 # -----------------------
-def render_warning_popup():
-    html = """
-    <style>
-    .popup-root {
-      position: fixed; inset: 0;
-      display:flex; align-items:center; justify-content:center;
-      z-index:999999 !important;
-      background: rgba(0,0,0,0);
-      backdrop-filter: blur(0px);
-      animation: fadeBg 0.36s forwards;
-    }
-    @keyframes fadeBg {
-      0% { background: rgba(0,0,0,0); backdrop-filter: blur(0px); }
-      100% { background: rgba(0,0,0,0.78); backdrop-filter: blur(8px); }
-    }
+def render_warning_from_file(path="warning_popup.html"):
+    if not os.path.exists(path):
+        st.error(f"File popup merah tidak ditemukan: {path}")
+        return
+    try:
+        html_code = open(path, "r", encoding="utf-8").read()
+        # height=0 allows fixed/fullscreen overlay from inside iframe
+        components.html(html_code, height=0, width=0, scrolling=False)
+    except Exception as e:
+        st.error(f"Gagal memuat {path}: {e}")
 
-    .popup-box {
-      width: 640px;
-      max-width: 92%;
-      background: linear-gradient(135deg,#ff4b4b,#a60000);
-      border-radius: 26px;
-      padding: 36px 30px;
-      color: white;
-      text-align: center;
-      box-shadow: 0 40px 80px rgba(0,0,0,0.6);
-      animation: popin 0.36s cubic-bezier(.2,.9,.2,1), shake 0.5s ease-in-out 0.28s;
-      transform-origin: center;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-    @keyframes popin {
-      0% { transform: scale(.45); opacity: 0; }
-      60% { transform: scale(1.12); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    @keyframes shake {
-      0% { transform: translateX(0); }
-      20% { transform: translateX(-12px); }
-      40% { transform: translateX(10px); }
-      60% { transform: translateX(-6px); }
-      80% { transform: translateX(4px); }
-      100% { transform: translateX(0); }
-    }
-
-    .icon {
-      font-size: 92px;
-      margin-bottom: 8px;
-      animation: glow 1s infinite alternate;
-      filter: drop-shadow(0 0 10px rgba(255,120,120,0.7));
-    }
-    @keyframes glow {
-      from { filter: drop-shadow(0 0 6px rgba(255,130,130,0.6)); transform: rotate(-3deg); }
-      to { filter: drop-shadow(0 0 22px rgba(255,40,40,0.95)); transform: rotate(3deg); }
-    }
-
-    .title {
-      font-size: 34px;
-      font-weight: 900;
-      margin: 6px 0;
-      text-shadow: 0 0 14px rgba(0,0,0,0.45);
-    }
-    .msg { font-size: 18px; opacity: 0.97; margin-top: 6px; line-height: 1.35; }
-    </style>
-
-    <div class="popup-root" id="warn-root">
-      <div class="popup-box">
-        <div class="icon">🚨</div>
-        <div class="title">PERINGATAN: Nilai Tensi Tidak Normal!</div>
-        <div class="msg">Terdeteksi hipertensi / hipotensi. Silakan cek data pasien dan tindak lanjut ke tenaga kesehatan jika perlu.</div>
-      </div>
-    </div>
-
-    <script>
-    setTimeout(() => {
-      const el = document.getElementById('warn-root');
-      if (el) el.remove();
-    }, 2200);
-    </script>
-    """
-    components.html(html, height=0, width=0, scrolling=False)
-
-# -----------------------
-# NORMAL GEMOY 200% POPUP (green, big centang, sparkles, bounce)
-# -----------------------
-def render_normal_gemoy_popup():
-    html = """
-    <style>
-    /* background fade */
-    .g-root {
-      position: fixed; inset: 0;
-      display:flex; align-items:center; justify-content:center;
-      z-index:999998;
-      background: rgba(0,0,0,0);
-      backdrop-filter: blur(0px);
-      animation: fadeBgG 0.36s forwards;
-    }
-    @keyframes fadeBgG {
-      0% { background: rgba(0,0,0,0); backdrop-filter: blur(0px); }
-      100% { background: rgba(0,0,0,0.65); backdrop-filter: blur(7px); }
-    }
-
-    .g-box {
-      position: relative;
-      width: 640px;
-      max-width: 92%;
-      background: linear-gradient(135deg, #0fb06a, #38ffb0);
-      border-radius: 28px;
-      padding: 34px 34px;
-      text-align: center;
-      color: white;
-      box-shadow: 0 30px 60px rgba(3,60,24,0.28);
-      transform-origin: center;
-      animation: gPop 0.48s cubic-bezier(.2,.9,.2,1);
-      border: 1px solid rgba(255,255,255,0.06);
-      overflow: visible;
-    }
-    @keyframes gPop {
-      0% { transform: scale(0.35); opacity: 0; }
-      60% { transform: scale(1.12); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
-    .g-check {
-      font-size: 110px;
-      margin-bottom: 6px;
-      filter: drop-shadow(0 0 18px rgba(0,255,170,0.85));
-      animation: pulseG 1.2s infinite;
-      transform-origin: center;
-    }
-    @keyframes pulseG {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.18); }
-      100% { transform: scale(1); }
-    }
-
-    .g-title {
-      font-size: 36px;
-      font-weight: 900;
-      margin: 0;
-      text-shadow: 0 0 10px rgba(0,0,0,0.35);
-    }
-    .g-sub { font-size: 20px; margin-top: 8px; opacity: 0.96; }
-
-    /* sparkles (decorative) */
-    .spark {
-      position: absolute;
-      width: 10px; height: 10px; background: rgba(255,255,255,0.95);
-      border-radius: 50%; opacity: 0;
-      box-shadow: 0 0 10px rgba(255,255,255,0.9);
-      transform-origin: center;
-      animation: sparkle 1.6s infinite;
-    }
-    .spark.s1 { top: 12px; left: 16%; animation-delay: 0s; }
-    .spark.s2 { top: 8px; right: 18%; animation-delay: 0.18s; }
-    .spark.s3 { bottom: 18px; left: 26%; animation-delay: 0.36s; }
-    .spark.s4 { bottom: 8px; right: 20%; animation-delay: 0.54s; }
-    .spark.s5 { top: 44%; left: 8%; animation-delay: 0.72s; }
-
-    @keyframes sparkle {
-      0% { opacity: 0; transform: scale(0.3) translateY(0); }
-      40% { opacity: 1; transform: scale(1.2) translateY(-6px); }
-      80% { opacity: 0.5; transform: scale(0.8) translateY(-3px); }
-      100% { opacity: 0; transform: scale(0.3) translateY(0); }
-    }
-
-    /* small confetti arcs (soft) */
-    .conf {
-      position: absolute;
-      width: 6px; height: 16px; border-radius: 3px;
-      opacity: 0; transform-origin: center;
-      animation: confA 1.6s infinite;
-    }
-    .conf.c1 { top: -12px; left: 26%; background: rgba(255,255,255,0.88); animation-delay: 0.05s; }
-    .conf.c2 { top: -6px; right: 22%; background: rgba(255,255,255,0.88); animation-delay: 0.26s; }
-    @keyframes confA {
-      0% { opacity: 0; transform: translateY(0) rotate(0deg) scale(0.6); }
-      30% { opacity: 1; transform: translateY(12px) rotate(25deg) scale(1); }
-      70% { opacity: 0.6; transform: translateY(6px) rotate(10deg) scale(0.9); }
-      100% { opacity: 0; transform: translateY(0) rotate(0deg) scale(0.6); }
-    }
-    </style>
-
-    <div class="g-root" id="g-root">
-      <div class="g-box">
-        <div class="g-check">✔️</div>
-        <div class="g-title">Datamu Normal</div>
-        <div class="g-sub">Jaga kesehatan yaaa!!! 💚✨</div>
-
-        <div class="spark s1"></div>
-        <div class="spark s2"></div>
-        <div class="spark s3"></div>
-        <div class="spark s4"></div>
-        <div class="spark s5"></div>
-
-        <div class="conf c1"></div>
-        <div class="conf c2"></div>
-      </div>
-    </div>
-
-    <script>
-    setTimeout(() => {
-      const el = document.getElementById('g-root');
-      if (el) el.remove();
-    }, 2100);
-    </script>
-    """
-    components.html(html, height=0, width=0, scrolling=False)
+def render_normal_from_file(path="normal_popup.html"):
+    if not os.path.exists(path):
+        st.error(f"File popup normal tidak ditemukan: {path}")
+        return
+    try:
+        html_code = open(path, "r", encoding="utf-8").read()
+        components.html(html_code, height=0, width=0, scrolling=False)
+    except Exception as e:
+        st.error(f"Gagal memuat {path}: {e}")
 
 # ============================================================
-# HOME / BERANDA
+# BERANDA / LANDING
 # ============================================================
 if st.session_state.page == "beranda":
-
     st.markdown("<div class='big-nadi-title'>❤️ NADI : Numeric Analysis of Diastolic & Systolic</div>", unsafe_allow_html=True)
-
     st.markdown(
         "<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>"
         "Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>"
-        "Namun, <b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>",
+        "<b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>",
         unsafe_allow_html=True
     )
 
@@ -412,7 +229,6 @@ if st.session_state.page == "beranda":
 
     st.markdown("---")
     st.subheader("Contoh Template Data (Upload)")
-
     sample_df = pd.DataFrame({
         "Nama": ["Budi","Budi","Siti","Siti"],
         "Tanggal": [
@@ -427,15 +243,14 @@ if st.session_state.page == "beranda":
     st.dataframe(sample_df)
     csv = sample_df.to_csv(index=False).encode("utf-8")
     st.download_button("Download template CSV", csv, "template_tensi.csv", "text/csv")
+
     st.stop()
 
 # ============================================================
-# INPUT DATA (UPLOAD) — handle file, run detection & popup
+# INPUT DATA (UPLOAD)
 # ============================================================
 if st.session_state.page == "input":
-
     st.header("📁 Analisis Data Populasi (Upload CSV / XLSX)")
-
     uploaded = st.file_uploader("Upload CSV / XLSX (minimal kolom: Nama, Systolic, Diastolic)", type=["csv","xlsx"])
     run = st.button("Analisis (RK4)")
 
@@ -458,7 +273,7 @@ if st.session_state.page == "input":
             st.error(f"Kolom minimal harus ada: {sorted(required)}")
             st.stop()
 
-        # tanggal handling
+        # handle tanggal
         if "Tanggal" in df.columns:
             df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
             if df["Tanggal"].isna().any():
@@ -500,41 +315,28 @@ if st.session_state.page == "input":
 
             if alert_needed:
                 st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:8])}")
-                # show dramatic warning popup
-                render_warning_popup()
-                # play siren a bit after popup appears
+                # show dramatic warning popup (from file)
+                render_warning_from_file("warning_popup.html")
+                # siren audio
                 wav = generate_siren_wav(duration=1.8)
                 datauri = wav_bytes_to_datauri(wav)
-                # audio element (looping for extra impact)
-                st.markdown(
-                    f"""<audio autoplay>
-                          <source src="{datauri}" type="audio/wav">
-                        </audio>""",
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"""<audio autoplay><source src="{datauri}" type="audio/wav"></audio>""", unsafe_allow_html=True)
             else:
                 st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
-                # show gemoy normal popup
-                render_normal_gemoy_popup()
-                # audio ting
+                # show gemoy normal popup (from file)
+                render_normal_from_file("normal_popup.html")
                 wav = generate_ting_wav(duration=0.45)
                 datauri = wav_bytes_to_datauri(wav)
-                st.markdown(
-                    f"""<audio autoplay>
-                          <source src="{datauri}" type="audio/wav">
-                        </audio>""",
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"""<audio autoplay><source src="{datauri}" type="audio/wav"></audio>""", unsafe_allow_html=True)
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
     st.stop()
-# PART 3/3
+
 # ============================================================
 # PERSONAL ANALYSIS
 # ============================================================
 if st.session_state.page == "personal":
-
     st.header("👤 Analisis Personal")
     st.write("Isi hingga 10 data tensi lalu klik Analisis (RK4).")
 
@@ -595,18 +397,17 @@ if st.session_state.page == "personal":
         # anomaly handling
         if dfp["Anom_Total"].iloc[-1]:
             st.error("⚠️ Terdeteksi hipertensi / hipotensi!")
-            render_warning_popup()
+            render_warning_from_file("warning_popup.html")
             wav = generate_siren_wav(duration=1.8)
             datauri = wav_bytes_to_datauri(wav)
             st.markdown(f"""<audio autoplay><source src="{datauri}" type="audio/wav"></audio>""", unsafe_allow_html=True)
         else:
-            st.success("✔ Data normal.")
-            render_normal_gemoy_popup()
+            st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
+            render_normal_from_file("normal_popup.html")
             wav = generate_ting_wav(duration=0.45)
             datauri = wav_bytes_to_datauri(wav)
             st.markdown(f"""<audio autoplay><source src="{datauri}" type="audio/wav"></audio>""", unsafe_allow_html=True)
 
-        # prediction text
         if pred_s is not None:
             st.markdown(f"**Prediksi RK4 (1 langkah)** — Sistolik: **{pred_s:.2f}**, Diastolik: **{pred_d:.2f}**")
 
@@ -618,10 +419,9 @@ if st.session_state.page == "personal":
     st.stop()
 
 # ============================================================
-# RESULTS (last)
+# RESULTS (LAST)
 # ============================================================
 if st.session_state.page == "hasil":
-
     st.header("📊 Hasil Analisis Terakhir")
     if st.session_state.last_result is None:
         st.info("Belum ada hasil. Lakukan analisis pada menu Input Data atau Personal.")
@@ -640,10 +440,9 @@ if st.session_state.page == "hasil":
 # WHY RK4
 # ============================================================
 if st.session_state.page == "rk4info":
-
     st.header("❔ Mengapa Menggunakan Metode RK4?")
     st.markdown("""
-    Metode **Runge–Kutta Orde 4 (RK4)** adalah salah satu pendekatan numerik yang paling
+   Metode **Runge–Kutta Orde 4 (RK4)** adalah salah satu pendekatan numerik yang paling
     banyak digunakan ketika kita ingin memperkirakan nilai di masa depan berdasarkan data
     yang sudah ada. Dalam konteks aplikasi ini, RK4 dipakai untuk memperkirakan arah
     perubahan tekanan darah sehingga pengguna dapat melihat pola yang lebih halus dan
