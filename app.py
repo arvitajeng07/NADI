@@ -143,7 +143,7 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
         <div style="font-size:90px; margin-bottom:10px; animation:pulse 1.3s infinite; filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));">✔️</div>
         <h2 style="margin:0; font-size:36px; font-weight:900;">Datamu Normal!</h2>
         <p style="font-size:20px; opacity:0.95; margin-top:8px;">Jaga kesehatan yaaa!! 💚✨</p>
-      ">
+      
         <div style="position:absolute; top:-10px; left:70px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite;"></div>
         <div style="position:absolute; top:-14px; right:60px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .3s;"></div>
         <div style="position:absolute; bottom:-10px; left:80px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .6s;"></div>
