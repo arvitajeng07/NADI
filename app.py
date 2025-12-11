@@ -30,7 +30,29 @@ if "last_context" not in st.session_state:
 # -----------------------
 st.markdown(
     """
-    <style>
+    <style> 
+/* ====== HEALTHCARE MOVING PATTERN ====== */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.10;
+    background-image:
+        url("https://i.ibb.co/8MmS2Xh/stetho.png"),
+        url("https://i.ibb.co/1TcfPjT/heartpulse.png"),
+        url("https://i.ibb.co/W2qQwxp/tensi.png");
+    background-repeat: repeat;
+    background-size: 180px, 150px, 170px;
+    animation: drift 60s linear infinite;
+}
+
+@keyframes drift {
+    0%   { background-position: 0px 0px, 0px 0px, 0px 0px; }
+    50%  { background-position: 200px 150px, 150px 200px, 250px 180px; }
+    100% { background-position: 0px 0px, 0px 0px, 0px 0px; }
+}
+
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     :root{ --bg1: #f3f9ff; --bg2: #eaf6ff; --primary-1: #0b63d9; --muted: #6b7280; }
     html, body, [class*="css"] { font-family: Inter, "Times New Roman", serif; background: linear-gradient(180deg, var(--bg1), var(--bg2)); }
@@ -115,45 +137,41 @@ def detect_anomaly_df(df,
 # -----------------------
 # RENDER NORMAL — INLINE FULLSCREEN (overlay via st.markdown)
 # -----------------------
-def render_normal_overlay(datauri=None, duration_ms=1800):
-
-    audio_html = ""
-    if datauri:
-        audio_html = f'<audio autoplay><source src="{datauri}" type="audio/wav"></audio>'
-
-    html = f"""
+def render_normal_popup():
+    html = """
     <html>
     <head>
     <style>
-    @keyframes pop {{
-        0% {{ transform:scale(.4); opacity:0; }}
-        60% {{ transform:scale(1.15); opacity:1; }}
-        100% {{ transform:scale(1); opacity:1; }}
-    }}
 
-    @keyframes fadein {{
-        0% {{ opacity:0; }}
-        100% {{ opacity:1; }}
-    }}
+    @keyframes pop {
+        0%   { transform:scale(.4); opacity:0; }
+        60%  { transform:scale(1.18); opacity:1; }
+        100% { transform:scale(1); opacity:1; }
+    }
 
-    @keyframes pulse {{
-        0% {{ transform:scale(1); }}
-        50% {{ transform:scale(1.18); }}
-        100% {{ transform:scale(1); }}
-    }}
+    @keyframes fadein {
+        0% { opacity:0; }
+        100% { opacity:1; }
+    }
 
-    @keyframes spark {{
-        0% {{ opacity:0; transform:scale(.3); }}
-        20% {{ opacity:1; transform:scale(1.3) translateY(-6px); }}
-        60% {{ opacity:.5; transform:scale(1) translateY(-2px); }}
-        100% {{ opacity:0; transform:scale(.3); }}
-    }}
+    @keyframes pulse {
+        0% { transform:scale(1); }
+        50% { transform:scale(1.15); }
+        100% { transform:scale(1); }
+    }
+
+    @keyframes spark {
+        0%   { opacity:0; transform:scale(.5); }
+        25%  { opacity:1; transform:scale(1.2) translateY(-8px); }
+        70%  { opacity:.4; transform:scale(1); }
+        100% { opacity:0; transform:scale(.5); }
+    }
+
     </style>
     </head>
-
     <body>
 
-    <div id="normal-root" style="
+    <div id="normal-popup-root" style="
         position:fixed; inset:0;
         background:rgba(0,0,0,0.45);
         backdrop-filter:blur(7px);
@@ -161,12 +179,12 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
         display:flex;
         justify-content:center;
         align-items:center;
-        animation:fadein .18s forwards;
+        animation:fadein .25s forwards;
     ">
 
         <div style="
             width:520px;
-            background:linear-gradient(135deg,#00e09f,#00b46f);
+            background:linear-gradient(145deg,#00e09f,#00b46f);
             border-radius:30px;
             padding:32px;
             text-align:center;
@@ -179,8 +197,8 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
             <div style="
                 font-size:90px;
                 margin-bottom:10px;
-                animation:pulse 1.3s infinite;
-                filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));
+                animation:pulse 1.4s infinite;
+                filter:drop-shadow(0 0 20px rgba(0,255,180,0.8));
             ">✔️</div>
 
             <h2 style="margin:0; font-size:36px; font-weight:900;">
@@ -200,7 +218,7 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
             "></div>
 
             <div style="
-                position:absolute; top:-14px; right:60px;
+                position:absolute; top:-20px; right:80px;
                 width:14px; height:14px; background:white;
                 border-radius:50%; opacity:0;
                 box-shadow:0 0 14px white;
@@ -208,7 +226,7 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
             "></div>
 
             <div style="
-                position:absolute; bottom:-10px; left:80px;
+                position:absolute; bottom:-10px; left:85px;
                 width:14px; height:14px; background:white;
                 border-radius:50%; opacity:0;
                 box-shadow:0 0 14px white;
@@ -217,22 +235,19 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
 
         </div>
 
-        {audio_html}
-
     </div>
 
     <script>
-    setTimeout(function() {{
-        var el = document.getElementById('normal-root');
+    setTimeout(function(){
+        var el = document.getElementById("normal-popup-root");
         if (el) el.remove();
-    }}, {duration_ms});
+    }, 2000);
     </script>
 
     </body>
     </html>
     """
-
-    components.html(html, height=0, width=0)
+    components.html(html, height=0)
 
 # -----------------------
 # RENDER WARNING — INLINE FULLSCREEN (super dramatic) + siren (1s)
@@ -510,6 +525,7 @@ if st.session_state.page == "personal":
             datauri = wav_bytes_to_datauri(wav)
             render_normal_overlay(datauri=datauri, duration_ms=1400)
             st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
+            render_normal_popup()
 
         if pred_s is not None:
             st.markdown(f"**Prediksi RK4 (1 langkah)** — Sistolik: **{pred_s:.2f}**, Diastolik: **{pred_d:.2f}**")
