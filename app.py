@@ -161,6 +161,14 @@ def render_dramatic_html():
         components.html(html_code, height=500, scrolling=False)
     except Exception as e:
         st.error(f"Gagal memuat warning_popup.html: {e}")
+
+def render_normal_html():
+    try:
+        html_code = open("normal_popup.html", "r", encoding="utf-8").read()
+        components.html(html_code, height=500, scrolling=False)
+    except Exception as e:
+        st.error(f"Gagal memuat normal_popup.html: {e}")
+
 # ============================================================
 # ====================   BERANDA   ===========================
 # ============================================================
@@ -347,6 +355,7 @@ if st.session_state.page == "input":
                 )
             else:
                 st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
+                 render_normal_html()
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
@@ -447,6 +456,7 @@ if st.session_state.page == "personal":
             )
         else:
             st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
+                render_normal_html()
 
         # prediksi text
         if pred_s is not None:

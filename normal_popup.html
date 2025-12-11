@@ -17,27 +17,28 @@ html,body{
     justify-content:center;
     background:rgba(0,0,0,0);
     backdrop-filter:blur(0px);
-    animation:fadeBg .36s forwards;
+    animation:fadeBg .35s forwards;
     z-index:999999;
 }
 
 @keyframes fadeBg{
-    to{ background:rgba(0,0,0,0.65); backdrop-filter:blur(7px); }
+    0%{ background:rgba(0,0,0,0); backdrop-filter:blur(0px); }
+    100%{ background:rgba(0,0,0,0.65); backdrop-filter:blur(7px); }
 }
 
 /* MAIN BOX */
 .box{
-    position:relative;
     width:640px;
     max-width:92%;
-    padding:38px 34px;
-    background:linear-gradient(135deg,#00c07a,#3affb5);
+    background:linear-gradient(135deg,#00e09f,#00b46f);
     border-radius:30px;
+    padding:34px 32px;
     text-align:center;
     color:white;
-    box-shadow:0 30px 60px rgba(0,70,40,0.35);
-    animation:pop .48s cubic-bezier(.2,.9,.2,1);
-    border:1px solid rgba(255,255,255,0.08);
+    box-shadow:0 40px 80px rgba(0,50,20,0.35);
+    animation:pop .38s cubic-bezier(.2,.9,.2,1),
+              bounce 1.4s ease-out .25s;
+    border:1px solid rgba(255,255,255,0.10);
 }
 
 @keyframes pop{
@@ -46,12 +47,19 @@ html,body{
     100%{ transform:scale(1); opacity:1; }
 }
 
-/* CHECK ICON */
-.check{
-    font-size:110px;
-    margin-bottom:6px;
-    animation:pulse 1.2s infinite;
-    filter:drop-shadow(0 0 20px rgba(0,255,170,0.85));
+@keyframes bounce{
+    0%{ transform:translateY(0); }
+    30%{ transform:translateY(-14px); }
+    60%{ transform:translateY(6px); }
+    100%{ transform:translateY(0); }
+}
+
+/* ICON */
+.icon{
+    font-size:100px;
+    margin-bottom:8px;
+    animation:pulse 1.3s infinite;
+    filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));
 }
 
 @keyframes pulse{
@@ -60,27 +68,15 @@ html,body{
     100%{ transform:scale(1); }
 }
 
-/* TEXT */
-.title{
-    font-size:36px;
-    font-weight:900;
-}
-
-.sub{
-    font-size:20px;
-    margin-top:6px;
-    opacity:0.96;
-}
-
-/* sparkles gemoy */
+/* SPARKLES */
 .spark{
     position:absolute;
-    width:12px; height:12px;
+    width:14px; height:14px;
     background:white;
     border-radius:50%;
     opacity:0;
-    box-shadow:0 0 12px rgba(255,255,255,0.9);
-    animation:spark 1.6s infinite;
+    box-shadow:0 0 16px rgba(255,255,255,0.9);
+    animation:spark 1.7s infinite;
 }
 
 .s1{ top:14px; left:18%; animation-delay:0s; }
@@ -91,9 +87,22 @@ html,body{
 
 @keyframes spark{
     0%{ opacity:0; transform:scale(.3); }
-    40%{ opacity:1; transform:scale(1.3) translateY(-6px); }
+    40%{ opacity:1; transform:scale(1.4) translateY(-6px); }
     80%{ opacity:.4; transform:scale(.9) translateY(-2px); }
     100%{ opacity:0; transform:scale(.3); }
+}
+
+/* TEXT */
+.title{
+    font-size:36px;
+    font-weight:900;
+    margin:4px 0 6px 0;
+}
+
+.msg{
+    font-size:20px;
+    opacity:0.97;
+    line-height:1.35;
 }
 </style>
 </head>
@@ -101,9 +110,9 @@ html,body{
 
 <div class="root" id="root">
     <div class="box">
-        <div class="check">✔️</div>
-        <div class="title">Datamu Normal</div>
-        <div class="sub">Jaga kesehatan yaaa!!! 💚✨</div>
+        <div class="icon">✔️</div>
+        <div class="title">Datamu Normal!</div>
+        <div class="msg">Jaga kesehatan yaa!! 💚✨</div>
 
         <div class="spark s1"></div>
         <div class="spark s2"></div>
@@ -117,7 +126,7 @@ html,body{
 setTimeout(()=>{
     const el=document.getElementById("root");
     if(el) el.remove();
-}, 2100);
+}, 2200);
 </script>
 
 </body>
