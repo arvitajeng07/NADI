@@ -1,4 +1,3 @@
-# APP.PY FINAL — with dramatic full-screen HTML popups (anomaly + normal)
 # ============================================================
 # ===================== IMPORT LIBRARY =======================
 # ============================================================
@@ -14,8 +13,6 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 from io import BytesIO
 import streamlit.components.v1 as components
-from streamlit.components.v1 import html
-
 
 # ============================================================
 # ===================== PAGE CONFIG ===========================
@@ -29,6 +26,7 @@ if "last_result" not in st.session_state:
     st.session_state.last_result = None
 if "last_context" not in st.session_state:
     st.session_state.last_context = None
+
 
 # ============================================================
 # ===================== CUSTOM STYLING ========================
@@ -45,12 +43,10 @@ st.markdown(
       --primary-2: #1ea7ff;
       --muted: #6b7280;
     }
-
     html, body, [class*="css"] {
         font-family: Inter, "Times New Roman", serif;
         background: linear-gradient(180deg, var(--bg1), var(--bg2));
     }
-
     .big-nadi-title {
         font-family: "Times New Roman", serif;
         font-size: 70px;
@@ -61,7 +57,6 @@ st.markdown(
         margin-top: 4px;
         margin-bottom: 8px;
     }
-
     .nadi-desc {
         text-align:center;
         color: var(--muted);
@@ -71,13 +66,8 @@ st.markdown(
         font-size:16px;
         line-height:1.45;
     }
-
     .glass {
-        background: linear-gradient(
-            180deg,
-            rgba(255,255,255,0.9),
-            rgba(246,251,255,0.88)
-        );
+        background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(246,251,255,0.88));
         border-radius: 14px;
         padding: 18px;
         box-shadow: 0 8px 28px rgba(11,99,217,0.06);
@@ -88,7 +78,6 @@ st.markdown(
         transform: translateY(-6px);
         box-shadow: 0 18px 40px rgba(11,99,217,0.09);
     }
-
     .spacer { margin-top: 14px; margin-bottom: 14px; }
     </style>
     """,
@@ -124,7 +113,7 @@ def wav_bytes_to_datauri(wav_bytes):
     return f"data:audio/wav;base64,{b64}"
 
 # ============================================================
-# ===================== RK4 PREDIKSI ==========================
+# ===================== RK4 & DETEKSI =========================
 # ============================================================
 
 def rk4_predict_value(last, prev, h=1.0):
@@ -142,9 +131,6 @@ def rk4_predict_series(arr):
         return None
     return rk4_predict_value(arr[-1], arr[-2])
 
-# ============================================================
-# ===================== DETEKSI ANOMALI =======================
-# ============================================================
 
 def detect_anomaly_df(df):
     df = df.copy()
@@ -156,10 +142,9 @@ def detect_anomaly_df(df):
     return df
 
 # ============================================================
-# ===================== POPUP (DRAMATIC INLINE HTML) =========
+# ===================== POPUP DRAMATIC FIX ===================
 # ============================================================
 
-# Warning (red) dramatic popup — full-screen with blur and siren icon
 def warning_popup():
     html = """
     <style>
@@ -174,96 +159,86 @@ def warning_popup():
       z-index:999999 !important;
     }
     .popup-box {
-      width: 520px;
-      background: linear-gradient(135deg, #ff4444, #b00000);
-      border-radius: 22px;
-      padding: 40px;
+      width:520px;
+      background:linear-gradient(135deg,#ff4444,#b00000);
+      border-radius:22px;
+      padding:40px;
+      color:white;
       text-align:center;
-      color: white;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.6);
-      animation: popin 0.35s ease-out;
-      border: 2px solid rgba(255,255,255,0.25);
+      animation:popin .35s ease-out;
+      box-shadow:0 25px 55px rgba(0,0,0,0.5);
     }
     .icon {
-      font-size: 80px;
-      margin-bottom: 14px;
-      text-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+      font-size:90px;
+      margin-bottom:10px;
+      text-shadow:0 0 15px rgba(255,0,0,0.7);
     }
     @keyframes popin {
-      0% { transform: scale(0.5); opacity:0; }
-      60% { transform: scale(1.07); opacity:1; }
-      100% { transform: scale(1); opacity:1; }
+      0% {transform:scale(.5); opacity:0;}
+      60% {transform:scale(1.1); opacity:1;}
+      100% {transform:scale(1); opacity:1;}
     }
     </style>
-
     <div class="popup-root" id="popup-root">
       <div class="popup-box">
         <div class="icon">🚨</div>
-        <h2 style="margin:0; font-size:32px; font-weight:900;">PERINGATAN</h2>
-        <p style="font-size:20px; opacity:0.95;">
-          Terdeteksi <b>Hipertensi / Hipotensi</b><br>
-          Silakan cek data pasien.
-        </p>
+        <h2 style="font-size:32px; margin:0; font-weight:900;">TERDETEKSI ANOMALI</h2>
+        <p style="font-size:20px; margin-top:6px;">Hipertensi / Hipotensi Terdeteksi.</p>
       </div>
     </div>
-
     <script>
     setTimeout(() => {
-       const e = document.getElementById("popup-root");
-       if (e) e.remove();
+        let x = document.getElementById("popup-root");
+        if (x) x.remove();
     }, 1700);
     </script>
     """
     components.html(html, height=0, width=0, scrolling=False)
 
 
-# Normal (green) dramatic popup — full-screen with blur and check icon
 def normal_popup():
     html = """
     <style>
-    .pop-green {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(6px);
+    .green-root {
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.55);
+      backdrop-filter:blur(6px);
       display:flex;
-      align-items:center;
       justify-content:center;
+      align-items:center;
       z-index:999999 !important;
     }
-    .box-green {
-      background: linear-gradient(135deg, #00b35a, #38ff9f);
-      padding: 44px 50px;
-      border-radius: 22px;
+    .green-box {
+      background:linear-gradient(135deg,#00b35a,#38ff9f);
+      padding:44px 50px;
+      border-radius:22px;
       text-align:center;
-      color: white;
-      animation: zoomIn 0.4s ease-out;
-      box-shadow:0 0 30px rgba(0,0,0,0.4);
+      color:white;
+      animation:zoomIn .4s ease-out;
+      box-shadow:0 0 30px rgba(0,0,0,0.45);
     }
     @keyframes zoomIn {
-      from { transform:scale(0.5); opacity:0; }
-      to   { transform:scale(1); opacity:1; }
+      from {transform:scale(.5); opacity:0;}
+      to {transform:scale(1); opacity:1;}
     }
     </style>
 
-    <div class="pop-green" id="pop-green">
-      <div class="box-green">
-         <div style="font-size:70px; margin-bottom:10px; filter:drop-shadow(0 0 10px #00ff99);">✔️</div>
-         <h2 style="margin:0; font-size:30px; font-weight:900;">DATAMU NORMAL</h2>
+    <div class="green-root" id="green-pop">
+       <div class="green-box">
+         <div style="font-size:80px; margin-bottom:10px; filter:drop-shadow(0 0 10px #00ff99);">✔️</div>
+         <h2 style="font-size:30px; margin:0; font-weight:900;">DATAMU NORMAL</h2>
          <p style="font-size:20px; opacity:0.95;">Jaga kesehatan ya!!! 💚✨</p>
-      </div>
+       </div>
     </div>
 
     <script>
     setTimeout(() => {
-        const e = document.getElementById("pop-green");
-        if (e) e.remove();
+        let x = document.getElementById("green-pop");
+        if (x) x.remove();
     }, 1600);
     </script>
     """
     components.html(html, height=0, width=0, scrolling=False)
-
-
 # ============================================================
 # ====================   BERANDA / LANDING   =================
 # ============================================================
@@ -276,7 +251,7 @@ if st.session_state.page == "beranda":
     )
 
     st.markdown(
-        "<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>Namun, <b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>",
+        "<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>Dengan memanfaatkan metode <b>RK4</b> dan bantuan kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>Namun, <b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>",
         unsafe_allow_html=True
     )
 
@@ -338,8 +313,9 @@ if st.session_state.page == "beranda":
 
     st.stop()
 
+
 # ============================================================
-# ==================   INPUT DATA (UPLOAD)   ==================
+# ==================   INPUT DATA (UPLOAD)   =================
 # ============================================================
 
 if st.session_state.page == "input":
@@ -349,12 +325,8 @@ if st.session_state.page == "input":
     run = st.button("Analisis (RK4)")
 
     if uploaded is not None:
-
         try:
-            if uploaded.name.lower().endswith(".csv"):
-                df = pd.read_csv(uploaded)
-            else:
-                df = pd.read_excel(uploaded)
+            df = pd.read_csv(uploaded) if uploaded.name.endswith(".csv") else pd.read_excel(uploaded)
         except Exception as e:
             st.error(f"Gagal membaca file: {e}")
             st.stop()
@@ -380,7 +352,6 @@ if st.session_state.page == "input":
             ]
 
         if run:
-
             parts = []
             alert_needed = False
             alert_names = []
@@ -412,83 +383,35 @@ if st.session_state.page == "input":
             st.session_state.last_result = result
             st.session_state.last_context = {"mode":"Input","file":uploaded.name}
 
+            # ========== POPUP DRAMATIC FIXED ==========
             if alert_needed:
                 st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:6])}")
                 warning_popup()
 
+                # Siren sound
                 wav = generate_siren_wav()
                 datauri = wav_bytes_to_datauri(wav)
                 st.markdown(
-                    f"""
-                    <audio autoplay>
-                        <source src="{datauri}" type="audio/wav">
-                    </audio>
-                    """,
+                    f"""<audio autoplay><source src="{datauri}" type="audio/wav"></audio>""",
                     unsafe_allow_html=True
                 )
+
             else:
-    		# DATA NORMAL → popup hijau dramatic + suara ting singkat
-    		st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
-	
-    		# --- DRAMATIC POPUP NORMAL (INLINE HTML) ---
-    		html = """
-    		<div style="
-        		position:fixed; inset:0;
-        		background:rgba(0,0,0,0.55);
-        		backdrop-filter:blur(6px);
-        		display:flex; justify-content:center; align-items:center;
-        		z-index:999999;
-    		">
-        	<div style="
-            	background:linear-gradient(135deg,#008f39,#3ddc84);
-            	padding:50px 70px;
-            	border-radius:25px;
-            	text-align:center;
-            	color:white;
-            	box-shadow:0 0 35px rgba(0,0,0,0.4);
-            	animation:zoomIn 0.3s ease-out;
-        		">
-            	<div style="font-size:80px; margin-bottom:15px; filter:drop-shadow(0 0 12px #00ff88);">
-                ✔️
-          	  </div>
-            	<div style="font-size:34px; font-weight:900; margin-bottom:8px;">
-                DATA NORMAL
-            	</div>
-            	<div style="font-size:22px; opacity:0.95;">
-            	    Datamu normal, Jaga kesehatan yaaa!!! 💚✨
-            	</div>
-     	   	</div>
-    </div>
+                st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
+                normal_popup()
 
-    <style>
-    @keyframes zoomIn {
-        from { transform:scale(0.5); opacity:0; }
-        to   { transform:scale(1); opacity:1; }
-    }
-    </style>
-    """
-
-    components.html(html, height=650, scrolling=False)
-
-    # --- bunyi ting 0.8 detik ---
-    wav = generate_ting_wav()  # pastikan durasi 0.8s pada fungsi pembuatnya
-    datauri = wav_bytes_to_datauri(wav)
-
-    st.markdown(
-        f"""
-        <audio autoplay>
-            <source src="{datauri}" type="audio/wav">
-        </audio>
-        """,
-        unsafe_allow_html=True
-    )
-
+                # Ting sound
+                wav = generate_ting_wav()
+                datauri = wav_bytes_to_datauri(wav)
+                st.markdown(
+                    f"""<audio autoplay><source src="{datauri}" type="audio/wav"></audio>""",
+                    unsafe_allow_html=True
+                )
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
 
     st.stop()
-
 # ============================================================
 # ==================   PERSONAL ANALYSIS   ====================
 # ============================================================
@@ -544,6 +467,7 @@ if st.session_state.page == "personal":
         st.subheader("Hasil Analisis Personal")
         st.dataframe(dfp)
 
+        # Grafik
         fig, ax = plt.subplots(figsize=(9,3))
         ax.plot(dfp["Tanggal"], dfp["Systolic"], marker="o", label="Systolic")
         ax.plot(dfp["Tanggal"], dfp["Diastolic"], marker="o", label="Diastolic")
@@ -555,33 +479,27 @@ if st.session_state.page == "personal":
         ax.legend()
         st.pyplot(fig)
 
-        # POPUP ANOMALI / NORMAL
+        # ========== POPUP DRAMATIC FIXED ==========
         if dfp["Anom_Total"].iloc[-1]:
             st.error("⚠️ Terdeteksi hipertensi / hipotensi pada data terakhir!")
             warning_popup()
 
+            # Siren
             wav = generate_siren_wav()
             datauri = wav_bytes_to_datauri(wav)
             st.markdown(
-                f"""
-                <audio autoplay>
-                    <source src="{datauri}" type="audio/wav">
-                </audio>
-                """,
+                f"""<audio autoplay><source src="{datauri}" type="audio/wav"></audio>""",
                 unsafe_allow_html=True
             )
         else:
             st.success("✔ Datamu normal. Jaga kesehatan yaaa!")
             normal_popup()
 
+            # Ting
             wav = generate_ting_wav()
             datauri = wav_bytes_to_datauri(wav)
             st.markdown(
-                f"""
-                <audio autoplay>
-                    <source src="{datauri}" type="audio/wav">
-                </audio>
-                """,
+                f"""<audio autoplay><source src="{datauri}" type="audio/wav"></audio>""",
                 unsafe_allow_html=True
             )
 
@@ -615,10 +533,7 @@ if st.session_state.page == "hasil":
         st.dataframe(st.session_state.last_result)
 
         df_show = st.session_state.last_result
-        if "Anom_Total" in df_show.columns:
-            total_anom = int(df_show["Anom_Total"].sum())
-        else:
-            total_anom = 0
+        total_anom = int(df_show["Anom_Total"].sum()) if "Anom_Total" in df_show.columns else 0
 
         st.markdown(f"**Total hipertensi/hipotensi terdeteksi: {total_anom}**")
 
