@@ -122,43 +122,46 @@ st.markdown(
 # -------------------------
 # 1) Sirine untuk anomali
 # -------------------------
-def generate_siren_wav(duration=0.8, sr=44100):
+def generate_siren_wav(duration=0.5, sr=44100):
     """
-    Membuat suara sirine pendek (0.8 detik).
-    Digunakan saat tensi dinyatakan anomali.
+    Sirine super pendek (0.5s) dengan fade-out,
+    supaya TIDAK terdengar panjang.
     """
     t = np.linspace(0, duration, int(sr*duration), endpoint=False)
 
-    # modulasi sirine
-    mod = 0.5 * (1 + np.sin(2 * np.pi * 1.2 * t))
-    freq = 800 + 300 * np.sin(2 * np.pi * 0.6 * t)
+    freq = 900 + 180 * np.sin(2 * np.pi * 2 * t)  # lebih cepat → lebih pendek
+    tone = 0.7 * np.sin(2 * np.pi * freq * t)
 
-    tone = 0.6 * np.sin(2 * np.pi * freq * t) * (0.6 + 0.4 * mod)
-    tone = np.clip(tone, -1, 1)
+    # Fade-out biar mati cepat
+    fade = np.linspace(1, 0, len(t))
+    tone = tone * fade
 
     buf = BytesIO()
     sf.write(buf, tone, sr, format='WAV')
     buf.seek(0)
-
     return buf.read()
+
 
 
 # -------------------------
 # 2) Ting normal (success)
 # -------------------------
-def generate_ting_wav(duration=0.8, sr=44100):
+def generate_ting_wav(duration=0.5, sr=44100):
     """
-    Membuat bunyi 'tringgg' pendek (0.8 detik).
-    Digunakan saat data normal.
+    Bunyi 'tring' super pendek & cepat hilang.
     """
     t = np.linspace(0, duration, int(sr*duration), endpoint=False)
-    freq = 1800  # nada tinggi
-    tone = 0.6 * np.sin(2 * np.pi * freq * t)
+    freq = 2000
+
+    tone = 0.8 * np.sin(2 * np.pi * freq * t)
+
+    # fade out
+    fade = np.linspace(1, 0, len(t))
+    tone = tone * fade
 
     buf = BytesIO()
     sf.write(buf, tone, sr, format='WAV')
     buf.seek(0)
-
     return buf.read()
 
 
@@ -243,38 +246,55 @@ def render_dramatic_html():
 # 2) Popup hijau (data normal)
 # ------------------------------
 def render_normal_popup():
-    """
-    Popup centang hijau dengan pesan:
-    'Data Normal, Jaga Kesehatan Ya!!!'
-    """
-    html_code = """
+    html = """
+    <style>
+    @keyframes pop {
+        0% { transform: scale(0.5); opacity:0; }
+        60% { transform: scale(1.1); opacity:1; }
+        100% { transform: scale(1); }
+    }
+    </style>
+
     <div style="
         position:fixed;
         inset:0;
-        background:rgba(0,0,0,0.55);
-        backdrop-filter:blur(4px);
+        background:rgba(0,0,0,0.75);
+        backdrop-filter:blur(8px);
         display:flex;
-        justify-content:center;
         align-items:center;
+        justify-content:center;
         z-index:999999;">
         
         <div style="
-            background:rgba(255,255,255,0.9);
-            padding:50px 70px;
+            background:rgba(255,255,255,0.15);
+            padding:60px 80px;
             border-radius:20px;
             text-align:center;
-            box-shadow:0 0 25px rgba(0,150,0,0.3);">
+            border:2px solid rgba(0,255,0,0.4);
+            box-shadow:0 0 25px rgba(0,255,0,0.6);
+            animation: pop 0.4s ease-out;">
             
             <img src='https://cdn-icons-png.flaticon.com/512/845/845646.png'
-                 style="width:130px; margin-bottom:20px; filter: drop-shadow(0 0 10px green);">
+                 style="width:130px; filter:drop-shadow(0 0 10px lime); margin-bottom:20px;">
             
-            <h1 style="color:green; font-size:36px; margin:0;">
-                Data Normal, Jaga Kesehatan Ya!!!
-            </h1>
+            <div style="
+                font-size:38px;
+                font-weight:900;
+                color:#00ff55;
+                text-shadow:0 0 20px rgba(0,255,0,0.6);">
+                Datamu Normal, Jaga Kesehatan Yaa!!!
+            </div>
         </div>
     </div>
+
+    <script>
+    setTimeout(()=>{
+        document.body.querySelector('div[style*="position:fixed"]').remove();
+    }, 1500);
+    </script>
     """
-    components.html(html_code, height=400, scrolling=False)
+    components.html(html, height=500, scrolling=False)
+
 # ============================================================
 # ====================   BERANDA / LANDING   =================
 # ============================================================
