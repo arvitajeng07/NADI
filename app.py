@@ -1,3 +1,11 @@
+if st.button("TEST POPUP"):
+    components.html("""
+        <div style="
+            position:fixed; inset:0; background:rgba(0,0,0,0.7);
+            color:white; display:flex; justify-content:center; align-items:center;
+            z-index:999999; font-size:40px;
+        ">TEST POPUP WORKS</div>
+    """, height=0)
 
 # ============================================================
 # APP.PY — NADI (RK4) FINAL (GEMOY 200%)
