@@ -122,87 +122,8 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
         audio_html = f'<audio autoplay><source src="{datauri}" type="audio/wav"></audio>'
 
     html = f"""
-    <div id="normal-root" style="
-        position:fixed; inset:0;
-        background:rgba(0,0,0,0.45);
-        backdrop-filter:blur(7px);
-        z-index:999999;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        animation:fadein .18s forwards;
-    ">
-
-        <div style="
-            width:520px;
-            background:linear-gradient(135deg,#00e09f,#00b46f);
-            border-radius:30px;
-            padding:32px;
-            text-align:center;
-            color:white;
-            box-shadow:0 40px 80px rgba(0,50,20,0.4);
-            animation:pop .35s cubic-bezier(.2,.9,.2,1);
-            position:relative;
-        ">
-
-            <div style="
-                font-size:90px;
-                margin-bottom:10px;
-                animation:pulse 1.3s infinite;
-                filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));
-            ">✔️</div>
-
-            <h2 style="margin:0; font-size:48px; font-weight:900;">
-                Datamu Normal!
-            </h2>
-
-            <p style="font-size:27px; opacity:0.95; margin-top:8px;">
-                Jaga kesehatan yaaa!! 💚✨
-            </p>
-
-            <!-- SPARKLES FIXED -->
-            <div style="
-                position:absolute; 
-                top:-10px; 
-                left:70px;
-                width:14px; height:14px; 
-                background:white; 
-                border-radius:50%; 
-                opacity:0;
-                box-shadow:0 0 14px white;
-                animation:spark 1.5s infinite;
-            "></div>
-
-            <div style="
-                position:absolute; 
-                top:-14px; 
-                right:60px;
-                width:14px; height:14px; 
-                background:white; 
-                border-radius:50%; 
-                opacity:0;
-                box-shadow:0 0 14px white;
-                animation:spark 1.5s infinite .3s;
-            "></div>
-
-            <div style="
-                position:absolute; 
-                bottom:-10px; 
-                left:80px;
-                width:14px; height:14px; 
-                background:white; 
-                border-radius:50%; 
-                opacity:0;
-                box-shadow:0 0 14px white;
-                animation:spark 1.5s infinite .6s;
-            "></div>
-
-        </div>
-
-        {audio_html}
-
-    </div>
-
+    <html>
+    <head>
     <style>
     @keyframes pop {{
         0% {{ transform:scale(.4); opacity:0; }}
@@ -228,16 +149,90 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
         100% {{ opacity:0; transform:scale(.3); }}
     }}
     </style>
+    </head>
+
+    <body>
+
+    <div id="normal-root" style="
+        position:fixed; inset:0;
+        background:rgba(0,0,0,0.45);
+        backdrop-filter:blur(7px);
+        z-index:999999999;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        animation:fadein .18s forwards;
+    ">
+
+        <div style="
+            width:520px;
+            background:linear-gradient(135deg,#00e09f,#00b46f);
+            border-radius:30px;
+            padding:32px;
+            text-align:center;
+            color:white;
+            box-shadow:0 40px 80px rgba(0,50,20,0.4);
+            animation:pop .35s cubic-bezier(.2,.9,.2,1);
+            position:relative;
+        ">
+
+            <div style="
+                font-size:90px;
+                margin-bottom:10px;
+                animation:pulse 1.3s infinite;
+                filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));
+            ">✔️</div>
+
+            <h2 style="margin:0; font-size:36px; font-weight:900;">
+                Datamu Normal!
+            </h2>
+
+            <p style="font-size:20px; opacity:0.95; margin-top:8px;">
+                Jaga kesehatan yaaa!! 💚✨
+            </p>
+
+            <div style="
+                position:absolute; top:-10px; left:70px;
+                width:14px; height:14px; background:white;
+                border-radius:50%; opacity:0;
+                box-shadow:0 0 14px white;
+                animation:spark 1.5s infinite;
+            "></div>
+
+            <div style="
+                position:absolute; top:-14px; right:60px;
+                width:14px; height:14px; background:white;
+                border-radius:50%; opacity:0;
+                box-shadow:0 0 14px white;
+                animation:spark 1.5s infinite .3s;
+            "></div>
+
+            <div style="
+                position:absolute; bottom:-10px; left:80px;
+                width:14px; height:14px; background:white;
+                border-radius:50%; opacity:0;
+                box-shadow:0 0 14px white;
+                animation:spark 1.5s infinite .6s;
+            "></div>
+
+        </div>
+
+        {audio_html}
+
+    </div>
 
     <script>
-    setTimeout(function(){{
+    setTimeout(function() {{
         var el = document.getElementById('normal-root');
-        if(el && el.parentNode) el.parentNode.removeChild(el);
+        if (el) el.remove();
     }}, {duration_ms});
     </script>
+
+    </body>
+    </html>
     """
 
-    st.markdown(html, unsafe_allow_html=True)
+    components.html(html, height=0, width=0)
 
 # -----------------------
 # RENDER WARNING — INLINE FULLSCREEN (super dramatic) + siren (1s)
