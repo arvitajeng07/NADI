@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<style>
+body {
+    margin:0;
+    padding:0;
+}
+#popup {
+    position: fixed;
+    inset:0;
+    background: rgba(0,0,0,0.75);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:999999;
+}
+.box {
+    background:rgba(255,255,255,0.15);
+    padding:60px 80px;
+    border-radius:20px;
+    text-align:center;
+    backdrop-filter:blur(8px);
+    border:2px solid rgba(0,255,0,0.4);
+    box-shadow:0 0 25px rgba(0,255,0,0.6);
+}
+.icon {
+    width:130px;
+    filter: drop-shadow(0 0 10px lime);
+    margin-bottom:20px;
+}
+.text {
+    font-size:38px;
+    font-weight:900;
+    color:#00ff55;
+    text-shadow:0 0 20px rgba(0,255,0,0.6);
+}
+</style>
+</head>
+
+<body>
+
+<div id="popup">
+  <div class="box" id="box">
+    <img src="https://cdn-icons-png.flaticon.com/512/845/845646.png" class="icon">
+    <div class="text">Datamu Normal, Jaga Kesehatan Yaa!!!</div>
+  </div>
+</div>
+
+<script>
+// animasi pop in
+anime({
+    targets: '#box',
+    scale: [0.6, 1],
+    duration: 400,
+    easing: 'easeOutBack'
+});
+
+// animasi shake ringan
+anime({
+    targets: '#box',
+    translateX: [-6, 6, -3, 3, 0],
+    duration: 450,
+    easing: 'easeInOutQuad'
+});
+
+// auto close
+setTimeout(()=>{
+    document.getElementById("popup").style.display = "none";
+}, 1500);
+</script>
+
+</body>
+</html>

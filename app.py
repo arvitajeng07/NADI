@@ -123,44 +123,26 @@ st.markdown(
 # 1) Sirine untuk anomali
 # -------------------------
 def generate_siren_wav(duration=0.5, sr=44100):
-    """
-    Sirine super pendek (0.5s) dengan fade-out,
-    supaya TIDAK terdengar panjang.
-    """
-    t = np.linspace(0, duration, int(sr*duration), endpoint=False)
-
-    freq = 900 + 180 * np.sin(2 * np.pi * 2 * t)  # lebih cepat → lebih pendek
+    t = np.linspace(0, duration, int(sr * duration), endpoint=False)
+    freq = 900 + 180 * np.sin(2 * np.pi * 2 * t)
     tone = 0.7 * np.sin(2 * np.pi * freq * t)
-
-    # Fade-out biar mati cepat
-    fade = np.linspace(1, 0, len(t))
-    tone = tone * fade
-
+    tone *= np.linspace(1, 0, len(t))
     buf = BytesIO()
-    sf.write(buf, tone, sr, format='WAV')
+    sf.write(buf, tone, sr, format="WAV")
     buf.seek(0)
     return buf.read()
-
 
 
 # -------------------------
 # 2) Ting normal (success)
 # -------------------------
 def generate_ting_wav(duration=0.5, sr=44100):
-    """
-    Bunyi 'tring' super pendek & cepat hilang.
-    """
-    t = np.linspace(0, duration, int(sr*duration), endpoint=False)
+    t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     freq = 2000
-
     tone = 0.8 * np.sin(2 * np.pi * freq * t)
-
-    # fade out
-    fade = np.linspace(1, 0, len(t))
-    tone = tone * fade
-
+    tone *= np.linspace(1, 0, len(t))
     buf = BytesIO()
-    sf.write(buf, tone, sr, format='WAV')
+    sf.write(buf, tone, sr, format="WAV")
     buf.seek(0)
     return buf.read()
 
@@ -232,68 +214,20 @@ def detect_anomaly_df(df):
 # 1) Popup merah dramatis (HTML)
 # ------------------------------
 def render_dramatic_html():
-    """
-    Memanggil warning_popup.html (punyamu sendiri).
-    """
-    try:
-        html_code = open("warning_popup.html", "r", encoding="utf-8").read()
-        components.html(html_code, height=500, scrolling=False)
-    except Exception as e:
-        st.error(f"Gagal memuat warning_popup.html: {e}")
+    html = open("warning_popup.html", "r", encoding="utf-8").read()
+    components.html(html, height=500, scrolling=False)
 
 
 # ------------------------------
 # 2) Popup hijau (data normal)
 # ------------------------------
 def render_normal_popup():
-    html = """
-    <style>
-    @keyframes pop {
-        0% { transform: scale(0.5); opacity:0; }
-        60% { transform: scale(1.1); opacity:1; }
-        100% { transform: scale(1); }
-    }
-    </style>
+    try:
+        html = open("normal_popup.html", "r", encoding="utf-8").read()
+        components.html(html, height=520, scrolling=False)
+    except:
+        st.error("normal_popup.html tidak ditemukan.")
 
-    <div style="
-        position:fixed;
-        inset:0;
-        background:rgba(0,0,0,0.75);
-        backdrop-filter:blur(8px);
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        z-index:999999;">
-        
-        <div style="
-            background:rgba(255,255,255,0.15);
-            padding:60px 80px;
-            border-radius:20px;
-            text-align:center;
-            border:2px solid rgba(0,255,0,0.4);
-            box-shadow:0 0 25px rgba(0,255,0,0.6);
-            animation: pop 0.4s ease-out;">
-            
-            <img src='https://cdn-icons-png.flaticon.com/512/845/845646.png'
-                 style="width:130px; filter:drop-shadow(0 0 10px lime); margin-bottom:20px;">
-            
-            <div style="
-                font-size:38px;
-                font-weight:900;
-                color:#00ff55;
-                text-shadow:0 0 20px rgba(0,255,0,0.6);">
-                Datamu Normal, Jaga Kesehatan Yaa!!!
-            </div>
-        </div>
-    </div>
-
-    <script>
-    setTimeout(()=>{
-        document.body.querySelector('div[style*="position:fixed"]').remove();
-    }, 1500);
-    </script>
-    """
-    components.html(html, height=500, scrolling=False)
 
 # ============================================================
 # ====================   BERANDA / LANDING   =================
@@ -498,7 +432,7 @@ if st.session_state.page == "input":
                 st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
 
                 # 1) popup hijau
-                render_normal_popup()
+                render_normal_popup.html()
 
                 # 2) bunyi 'tring' singkat
                 wav = generate_ting_wav()  # default 0.8s
