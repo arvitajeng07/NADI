@@ -1,14 +1,13 @@
 # app.py
 """
-Sistem Deteksi Anomali & Prediksi Tensi (RK4)
-Tema: Biru - Putih
-Fitur:
- - Landing page (dua "kantong" pilih mode: Input Data / Personal)
- - ANALISIS DATA: upload CSV/XLSX (kolom minimal: Nama, Systolic, Diastolic, Tanggal optional) -> RK4 -> alarm overlay
- - PERSONAL: input manual sampai 10 data -> RK4 -> alarm overlay
- - HALAMAN: Hasil Analisis (tampilkan hasil terakhir)
- - HALAMAN: Mengapa RK4? (penjelasan singkat)
- - Alarm otomatis + full-screen siren overlay + tombol hentikan
+APP.PY FINAL — NADI (RK4) with dramatic popup + siren overlay
+Style: Soft Aesthetic Blue
+Features:
+ - Landing page (tombol navigasi)
+ - Upload CSV/XLSX analysis (multi-patient) -> RK4 -> anomaly detection -> dramatic popup -> siren overlay
+ - Personal input (1-10 data) -> RK4 -> anomaly detection -> dramatic popup -> siren overlay
+ - Hasil Analisis (last result)
+ - Mengapa RK4?
 Requirements:
  - streamlit, pandas, numpy, matplotlib, soundfile, openpyxl, pillow
 """
@@ -21,11 +20,12 @@ import base64
 import soundfile as sf
 from datetime import datetime, timedelta
 import streamlit.components.v1 as components
+import time
 
 # -----------------------
-# Page config & state
+# Page config & initial state
 # -----------------------
-st.set_page_config(page_title="NADI (RK4)", layout="wide")
+st.set_page_config(page_title="NADI (RK4) — Soft Blue", layout="wide")
 if "page" not in st.session_state:
     st.session_state.page = "beranda"
 if "last_result" not in st.session_state:
@@ -34,81 +34,131 @@ if "last_context" not in st.session_state:
     st.session_state.last_context = None
 
 # -----------------------
-# CSS + small modal warning + styling
+# Soft Aesthetic CSS + small modal + dramatic popup CSS/JS
 # -----------------------
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Times+New+Roman:wght@700&display=swap');
-
-.big-nadi-title {
-    font-family: 'Times New Roman', serif;
-    font-size: 50px;
-    text-align: center;
-    font-weight: bold;
-    margin-top: -20px;
-}
-
-.nadi-desc {
-    font-size: 17px;
-    text-align: center;
-    opacity: 0.85;
-    margin-bottom: 25px;
-}
-
-/* cards */
-.card { background: linear-gradient(180deg,#ffffff,#f6fbff); padding:18px; border-radius:12px; box-shadow: 0 6px 20px rgba(11,99,217,0.06); }
-.mode-tile { border-radius:12px; padding:18px; text-align:center; transition: transform .12s ease-in-out; cursor:pointer; }
-.mode-tile:hover { transform: translateY(-6px); box-shadow: 0 12px 30px rgba(11,99,217,0.08); }
-.cta { background: linear-gradient(90deg,#0b63d9, #1ea7ff); color:white; padding:10px 18px; border-radius:10px; font-weight:700; border:none; text-decoration:none; }
-
-/* small modal warning */
-#modal-warning {
-    position: fixed; top:0; left:0; width:100%; height:100%;
-    background: rgba(0,0,0,0.55);
-    display:none; align-items:center; justify-content:center;
-    z-index:99999;
-}
-.modal-content {
-    background:white; padding:35px 45px; border-radius:18px; text-align:center;
-    font-size:22px; font-weight:bold; animation:pop .3s ease-out;
-}
-@keyframes pop { 0%{transform:scale(.5);opacity:0;} 100%{transform:scale(1);opacity:1;} }
-.alarm-img-small { width:80px; margin-bottom:10px; }
-
-/* siren overlay styles for components.html (render_siren_overlay) */
-.siren-overlay{
-  position: fixed; inset:0; z-index:999999; display:flex; align-items:center; justify-content:center;
-  background: rgba(0,0,0,0.66); backdrop-filter: blur(3px);
-}
-.siren-box { text-align:center; color:white; padding:24px; border-radius:12px; }
-.siren-svg { width: 36vmin; height: 36vmin; animation: pulse 1s infinite; }
-@keyframes pulse { 0%{transform:scale(1);opacity:1}50%{transform:scale(1.03);opacity:0.95}100%{transform:scale(1);opacity:1} }
-.stop-btn { margin-top:18px; background:white; color:#c53030; padding:10px 20px; border-radius:8px; font-weight:700; border:none; cursor:pointer; }
-
-</style>
-
-<!-- small modal HTML -->
-<div id="modal-warning">
-  <div class="modal-content">
-    <img class="alarm-img-small" src="https://cdn-icons-png.flaticon.com/512/463/463612.png">
-    <div id="modal-text">Peringatan</div>
-  </div>
-</div>
-
-<script>
-function showWarning(text){
-    const el = window.parent.document.getElementById('modal-warning') || document.getElementById('modal-warning');
-    if(el){
-        const txt = el.querySelector('#modal-text');
-        if(txt) txt.innerText = text;
-        el.style.display = 'flex';
-        setTimeout(()=>{ el.style.display = 'none'; }, 1700);
-    } else {
-        alert(text);
+st.markdown(
+    """
+    <style>
+    /* Font + theme */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    :root{
+      --bg1: #f3f9ff; --bg2: #eaf6ff;
+      --primary-1: #0b63d9; --primary-2: #1ea7ff; --muted: #6b7280;
     }
-}
-</script>
-""", unsafe_allow_html=True)
+    html, body, [class*="css"]  {
+      font-family: Inter, "Times New Roman", serif;
+      background: linear-gradient(180deg, var(--bg1), var(--bg2));
+    }
+
+    /* Header */
+    .big-nadi-title { font-family: "Times New Roman", serif; font-size: 52px; font-weight:700; color:var(--primary-1); text-align:center; margin-top:6px; margin-bottom:6px; }
+    .nadi-desc { text-align:center; color:var(--muted); max-width:920px; margin:auto; margin-bottom:18px; font-size:15.5px; line-height:1.45; }
+
+    /* Glass card + tiles */
+    .glass { background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(246,251,255,0.88)); border-radius:14px; padding:18px; box-shadow:0 8px 28px rgba(11,99,217,0.06); border:1px solid rgba(255,255,255,0.6); transition: transform .18s ease, box-shadow .18s ease; }
+    .glass:hover { transform: translateY(-6px); box-shadow:0 18px 40px rgba(11,99,217,0.09); }
+    .cta-btn { display:inline-block; padding:10px 20px; border-radius:12px; background: linear-gradient(90deg, var(--primary-1), var(--primary-2)); color:white; font-weight:700; border:none; box-shadow:0 8px 18px rgba(11,99,217,0.12); cursor:pointer; }
+    .spacer { margin-top:14px; margin-bottom:14px; }
+
+    /* small modal warning */
+    #modal-warning { position: fixed; top:0; left:0; width:100%; height:100%; display:none; align-items:center; justify-content:center; background: rgba(4,8,13,0.45); z-index:99999; }
+    .modal-content { width:360px; background:white; border-radius:12px; padding:22px; text-align:center; box-shadow:0 10px 30px rgba(2,6,23,0.12); animation: pop .22s ease-out; }
+    @keyframes pop { from {transform:scale(.92);opacity:0} to {transform:scale(1);opacity:1} }
+    .alarm-img-small { width:72px; margin-bottom:10px; }
+
+    /* dramatic big popup */
+    #dramatic-warning {
+      position: fixed; top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.78); backdrop-filter: blur(6px);
+      display:none; align-items:center; justify-content:center; z-index:99998;
+    }
+    .dramatic-box {
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      padding: 48px 64px; border-radius:22px; text-align:center;
+      box-shadow: 0 0 80px rgba(255,0,0,0.18);
+      animation: zoomIn .3s ease-out, shake .35s .05s ease-in-out;
+      border: 1px solid rgba(255,255,255,0.08);
+      max-width: 780px;
+    }
+    .dramatic-icon { width: 140px; filter: drop-shadow(0 0 12px rgba(255,0,0,0.6)); margin-bottom:18px; }
+    #dramatic-text { font-size:46px; font-weight:900; color:#ff1e1e; text-shadow:0 0 20px rgba(255,0,0,0.7); margin-bottom:8px; }
+    #dramatic-countdown { font-size:32px; font-weight:700; color:white; margin-top:10px; }
+
+    @keyframes zoomIn { 0%{transform:scale(.6);opacity:0} 100%{transform:scale(1);opacity:1} }
+    @keyframes shake { 0%{transform:translateX(-6px)} 35%{transform:translateX(6px)} 70%{transform:translateX(-3px)} 100%{transform:translateX(0)} }
+
+    /* siren overlay styles */
+    .siren-overlay{ position: fixed; inset:0; z-index:999999; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.66); backdrop-filter: blur(3px); }
+    .siren-box { text-align:center; color:white; padding:24px; border-radius:14px; }
+    .siren-svg { width: 34vmin; height: 34vmin; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%{transform:scale(1);opacity:1}50%{transform:scale(1.03);opacity:0.95}100%{transform:scale(1);opacity:1} }
+    .stop-btn { margin-top:18px; background:white; color:#c53030; padding:10px 18px; border-radius:10px; font-weight:700; border:none; cursor:pointer; }
+
+    </style>
+
+    <!-- small modal HTML -->
+    <div id="modal-warning">
+      <div class="modal-content">
+        <img class="alarm-img-small" src="https://cdn-icons-png.flaticon.com/512/463/463612.png">
+        <div id="modal-text" style="font-weight:700; color:#0b63d9;">Peringatan</div>
+      </div>
+    </div>
+
+    <!-- dramatic popup HTML -->
+    <div id="dramatic-warning">
+      <div class="dramatic-box">
+        <img class="dramatic-icon" src="https://cdn-icons-png.flaticon.com/512/463/463612.png">
+        <div id="dramatic-text">PERINGATAN ANOMALI</div>
+        <div id="dramatic-countdown">Alarm aktif dalam 3...</div>
+      </div>
+    </div>
+
+    <script>
+    function showWarning(text){
+        try{
+          const el = window.parent.document.querySelector('#modal-warning') || document.getElementById('modal-warning');
+          if(el){
+            const txt = el.querySelector('#modal-text');
+            if(txt) txt.innerText = text;
+            el.style.display = 'flex';
+            setTimeout(()=>{ el.style.display = 'none'; }, 1700);
+          } else {
+            alert(text);
+          }
+        }catch(e){
+          alert(text);
+        }
+    }
+
+    // dramatic popup controller
+    function showDramaticWarning(text){
+        try{
+            const box = window.parent.document.querySelector('#dramatic-warning') || document.getElementById('dramatic-warning');
+            const t = box.querySelector('#dramatic-text');
+            const c = box.querySelector('#dramatic-countdown');
+            t.innerText = text;
+            box.style.display = 'flex';
+            let countdown = 3;
+            c.innerText = "Alarm aktif dalam " + countdown + "...";
+            const id = setInterval(()=>{
+                countdown -= 1;
+                if(countdown > 0){
+                    c.innerText = "Alarm aktif dalam " + countdown + "...";
+                } else {
+                    clearInterval(id);
+                }
+            }, 700);
+            // hide automatically after ~2.1s
+            setTimeout(()=>{ box.style.display = 'none'; }, 2100);
+        }catch(e){
+            console.log("showDramaticWarning err", e);
+            alert(text);
+        }
+    }
+    </script>
+    """,
+    unsafe_allow_html=True
+)
 
 # -----------------------
 # Helpers: audio (siren), datauri
@@ -129,7 +179,7 @@ def wav_bytes_to_datauri(wav_bytes):
     return f"data:audio/wav;base64,{b64}"
 
 # -----------------------
-# RK4 helpers (as in filemu)
+# RK4 helpers (original)
 # -----------------------
 def rk4_predict_value(last, prev, h=1.0):
     slope = last - prev
@@ -148,7 +198,7 @@ def rk4_predict_series(arr):
     return rk4_predict_value(arr[-1], arr[-2])
 
 # -----------------------
-# Anomaly detection (as in filemu)
+# Anomaly detection (original)
 # -----------------------
 def detect_anomaly_df(df, thresh_sys_high=140, thresh_dia_high=90, thresh_sys_low=90, thresh_dia_low=60):
     df = df.copy()
@@ -165,7 +215,6 @@ def detect_anomaly_df(df, thresh_sys_high=140, thresh_dia_high=90, thresh_sys_lo
             df[f'Z_{col[:3]}'] = 0.0
         else:
             df[f'Z_{col[:3]}'] = (df[col] - mean) / std
-    # note: 'Z_Sys' / 'Z_Dia' names match truncation used in your code
     df['Anom_Z'] = (df['Z_Sys'].abs() > 2.5) | (df['Z_Dia'].abs() > 2.5)
     df['Delta_Sys'] = df['Systolic'].diff().abs().fillna(0)
     df['Delta_Dia'] = df['Diastolic'].diff().abs().fillna(0)
@@ -174,7 +223,7 @@ def detect_anomaly_df(df, thresh_sys_high=140, thresh_dia_high=90, thresh_sys_lo
     return df
 
 # -----------------------
-# Siren overlay render (full-screen with audio + stop btn)
+# Siren overlay render (full-screen)
 # -----------------------
 def render_siren_overlay(audio_datauri, title_text="PERINGATAN: Anomali Tensi Terdeteksi"):
     html = f"""
@@ -201,36 +250,33 @@ def render_siren_overlay(audio_datauri, title_text="PERINGATAN: Anomali Tensi Te
     components.html(html, height=150)
 
 # -----------------------
-# NAVIGATION: Beranda (tombol)
+# NAV: BERANDA (tombol)
 # -----------------------
 if st.session_state.page == "beranda":
     st.markdown("<div class='big-nadi-title'>✨ NADI : Numeric Analysis of Diastolic & Systolic</div>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='nadi-desc'>
-    <b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b>
-    Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.
-    <br><br>
-    Namun, <b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.
-    Gunakan <b>NADI</b> sebagai langkah awal untuk mengenali pola, bukan sebagai keputusan akhir kesehatan Anda.
-    <br><br>
-    <i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>Namun, <b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>", unsafe_allow_html=True)
 
+    # two main tiles
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("📁 Analisis Data (Puskesmas/Klinik)", use_container_width=True):
-            st.session_state.page = "input"
+        st.markdown('<div class="glass"><h3 style="color:var(--primary-1)">Input Data (Puskesmas / Klinik)</h3><p style="color:var(--muted)">Untuk analisis populasi: upload CSV/XLSX berisi banyak pasien. Sistem akan memproses tiap pasien, menandai anomali, dan memprediksi tekanan berikutnya.</p><div class="spacer"></div><div><button class="cta-btn" onclick="(function(){window.dispatchEvent(new CustomEvent(\'setPage\', {detail:\'input\'}));})()">Masuk ke Input Data</button></div></div>', unsafe_allow_html=True)
     with c2:
-        if st.button("👤 Analisis Personal", use_container_width=True):
-            st.session_state.page = "personal"
+        st.markdown('<div class="glass"><h3 style="color:var(--primary-1)">Analisis Personal</h3><p style="color:var(--muted)">Untuk analisis personal: input sampai 10 data tensi untuk prediksi dan deteksi anomali.</p><div class="spacer"></div><div><button class="cta-btn" onclick="(function(){window.dispatchEvent(new CustomEvent(\'setPage\', {detail:\'personal\'}));})()">Masuk ke Personal</button></div></div>', unsafe_allow_html=True)
 
     st.write("")
-    if st.button("📊 Lihat Hasil Analisis Terakhir"):
-        st.session_state.page = "hasil"
-
-    if st.button("❔ Mengapa RK4?"):
-        st.session_state.page = "rk4info"
+    # extra horizontal buttons
+    col_a, col_b, col_c = st.columns([1,1,1])
+    with col_a:
+        if st.button("📊 Lihat Hasil Analisis Terakhir"):
+            st.session_state.page = "hasil"
+    with col_b:
+        if st.button("❔ Mengapa RK4?"):
+            st.session_state.page = "rk4info"
+    with col_c:
+        if st.button("🔄 Reset hasil terakhir"):
+            st.session_state.last_result = None
+            st.session_state.last_context = None
+            st.success("Riwayat hasil direset.")
 
     st.markdown("---")
     st.subheader("Contoh Template Data (untuk upload)")
@@ -244,6 +290,17 @@ if st.session_state.page == "beranda":
     st.dataframe(sample_df)
     csv = sample_df.to_csv(index=False).encode('utf-8')
     st.download_button("Download contoh CSV", data=csv, file_name="template_tensi.csv", mime="text/csv")
+
+    # JS listener to set page via custom event (for HTML buttons)
+    st.markdown("""
+    <script>
+    window.addEventListener('setPage', function(e){
+        const page = e.detail;
+        // try to set Streamlit page by changing location.hash (fallback)
+        window.location.hash = page;
+    });
+    </script>
+    """, unsafe_allow_html=True)
 
     st.stop()
 
@@ -311,10 +368,18 @@ if st.session_state.page == "input":
                 total_anom = int(result['Anom_Total'].sum()) if 'Anom_Total' in result.columns else 0
                 if total_anom > 0:
                     st.error(f"🚨 TERDETEKSI {total_anom} data anomali. Contoh pasien: {', '.join(map(str,siren_names[:6]))}")
-                    # full siren overlay + audio
+
+                    # 1) show dramatic popup
+                    st.markdown("""<script>showDramaticWarning("ANOMALI TENSI TERDETEKSI!");</script>""", unsafe_allow_html=True)
+
+                    # 2) prepare siren audio and wait for dramatic popup countdown
                     wav = generate_siren_wav(duration=2.0)
                     datauri = wav_bytes_to_datauri(wav)
+                    time.sleep(2.1)
+
+                    # 3) show full siren overlay with audio
                     render_siren_overlay(datauri, title_text="PERINGATAN: Anomali Tensi Terdeteksi!")
+
                     st.subheader("Detail pasien bermasalah")
                     for p in siren_names:
                         with st.expander(f"Pasien: {p}"):
@@ -324,7 +389,7 @@ if st.session_state.page == "input":
                             ax.plot(sub['Tanggal'], sub['Systolic'], marker='o', label='Systolic')
                             ax.plot(sub['Tanggal'], sub['Diastolic'], marker='o', label='Diastolic')
                             # highlight anomalies if present
-                            if 'Anom_Total' in sub.columns:
+                            if 'Anom_Total' in sub.columns and sub['Anom_Total'].any():
                                 anom_dates = sub[sub['Anom_Total']]['Tanggal']
                                 anom_vals = sub[sub['Anom_Total']]['Systolic']
                                 ax.scatter(anom_dates, anom_vals, color='red', marker='x', s=90, label='Anomali')
@@ -349,28 +414,33 @@ if st.session_state.page == "input":
     st.stop()
 
 # -----------------------
-# HALAMAN: PERSONAL
+# HALAMAN: PERSONAL (dengan petunjuk di kanan)
 # -----------------------
 if st.session_state.page == "personal":
-    st.header("Analisis Personal")
+    st.markdown("<div style='display:flex;align-items:flex-start;gap:18px;'>", unsafe_allow_html=True)
+    # left: main form
+    st.markdown("<div style='flex:2;'>", unsafe_allow_html=True)
+    st.header("👤 Analisis Personal")
     st.write("Masukkan nama, pilih jumlah data (max 10), isi pasangan Systolic & Diastolic, lalu klik Analisis (RK4).")
-    colL, colR = st.columns([2,1])
-    with colL:
-        name = st.text_input("Nama")
-        n = st.number_input("Jumlah data (1-10)", min_value=1, max_value=10, value=4, step=1)
-        systolic = []
-        diastolic = []
-        for i in range(int(n)):
-            c1, c2 = st.columns(2)
-            with c1:
-                s = st.number_input(f"Sistolik #{i+1}", min_value=40, max_value=250, value=120, key=f"ps_{i}")
-            with c2:
-                d = st.number_input(f"Diastolik #{i+1}", min_value=20, max_value=180, value=80, key=f"pd_{i}")
-            systolic.append(s)
-            diastolic.append(d)
-        analyze = st.button("Analisis (RK4)")
-    with colR:
-        st.markdown('<div class="card"><h4 style="color:#0b63d9;">Petunjuk</h4><p class="muted">Masukkan data dalam urutan kronologis (yang paling awal dahulu). Prediksi akan dilakukan 1 langkah ke depan berdasarkan dua data terakhir menggunakan RK4 sederhana.</p></div>', unsafe_allow_html=True)
+    name = st.text_input("Nama")
+    n = st.number_input("Jumlah data (1-10)", min_value=1, max_value=10, value=4, step=1)
+    systolic = []
+    diastolic = []
+    for i in range(int(n)):
+        c1, c2 = st.columns(2)
+        with c1:
+            s = st.number_input(f"Sistolik #{i+1}", min_value=40, max_value=250, value=120, key=f"ps_{i}")
+        with c2:
+            d = st.number_input(f"Diastolik #{i+1}", min_value=20, max_value=180, value=80, key=f"pd_{i}")
+        systolic.append(s)
+        diastolic.append(d)
+    analyze = st.button("Analisis (RK4)")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # right: petunjuk (glass card)
+    st.markdown("<div style='flex:1;'>", unsafe_allow_html=True)
+    st.markdown('<div class="glass"><h4 style="color:#0b63d9;margin-bottom:6px;">Petunjuk</h4><p style="color:var(--muted);margin:0;">Masukkan data dalam urutan kronologis (yang paling awal dahulu). Prediksi akan dilakukan 1 langkah ke depan berdasarkan dua data terakhir menggunakan RK4 sederhana.</p><hr style="border:none;border-top:1px solid rgba(11,99,217,0.06);margin:12px 0;"><p style="margin:0;color:var(--muted);font-size:13px;"><b>Catatan:</b> Hasil komputasi bersifat ilustrasi. Untuk keputusan medis, konsultasi tenaga kesehatan diperlukan.</p></div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if analyze:
         if not name:
@@ -411,10 +481,11 @@ if st.session_state.page == "personal":
             last = dfp.iloc[-1]
             if bool(last.get('Anom_Total', False)):
                 st.error("⚠️ Terdeteksi anomali pada data terakhir!")
-                # small modal + full siren overlay
-                st.markdown("""<script>showWarning("Terdeteksi anomali pada data terakhir!");</script>""", unsafe_allow_html=True)
+                # dramatic popup + siren overlay
+                st.markdown("""<script>showDramaticWarning("ANOMALI TERDETEKSI PADA DATA!");</script>""", unsafe_allow_html=True)
                 wav = generate_siren_wav(duration=2.0)
                 datauri = wav_bytes_to_datauri(wav)
+                time.sleep(2.1)
                 render_siren_overlay(datauri, title_text="PERINGATAN: Anomali pada Data!")
             else:
                 st.success("✔ Data terakhir tampak normal.")
@@ -428,7 +499,7 @@ if st.session_state.page == "personal":
     st.stop()
 
 # -----------------------
-# HALAMAN: HASIL ANALISIS (lihat hasil terakhir)
+# HALAMAN: HASIL ANALISIS
 # -----------------------
 if st.session_state.page == "hasil":
     st.header("Hasil Analisis Terakhir")
@@ -465,7 +536,7 @@ if st.session_state.page == "rk4info":
     st.stop()
 
 # -----------------------
-# Footer (shouldn't reach here normally)
+# Footer
 # -----------------------
 st.markdown("---")
-st.markdown('<div class="muted">Catatan: Aplikasi ini untuk tujuan demo/pendukung edukasi — bukan pengganti konsultasi medis. Sesuaikan aturan deteksi dan threshold jika diperlukan.</div>', unsafe_allow_html=True)
+st.markdown('<div style="color:var(--muted);">Catatan: Aplikasi ini untuk tujuan demo/pendukung edukasi — bukan pengganti konsultasi medis. Sesuaikan aturan deteksi dan threshold jika diperlukan.</div>', unsafe_allow_html=True)
