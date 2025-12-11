@@ -469,19 +469,62 @@ if st.session_state.page == "input":
                     unsafe_allow_html=True
                 )
             else:
-                st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
-                normal_popup()
+    # DATA NORMAL → popup hijau dramatic + suara ting singkat
+    st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
 
-                wav = generate_ting_wav()
-                datauri = wav_bytes_to_datauri(wav)
-                st.markdown(
-                    f"""
-                    <audio autoplay>
-                        <source src="{datauri}" type="audio/wav">
-                    </audio>
-                    """,
-                    unsafe_allow_html=True
-                )
+    # --- DRAMATIC POPUP NORMAL (INLINE HTML) ---
+    html = """
+    <div style="
+        position:fixed; inset:0;
+        background:rgba(0,0,0,0.55);
+        backdrop-filter:blur(6px);
+        display:flex; justify-content:center; align-items:center;
+        z-index:999999;
+    ">
+        <div style="
+            background:linear-gradient(135deg,#008f39,#3ddc84);
+            padding:50px 70px;
+            border-radius:25px;
+            text-align:center;
+            color:white;
+            box-shadow:0 0 35px rgba(0,0,0,0.4);
+            animation:zoomIn 0.3s ease-out;
+        ">
+            <div style="font-size:80px; margin-bottom:15px; filter:drop-shadow(0 0 12px #00ff88);">
+                ✔️
+            </div>
+            <div style="font-size:34px; font-weight:900; margin-bottom:8px;">
+                DATA NORMAL
+            </div>
+            <div style="font-size:22px; opacity:0.95;">
+                Datamu normal, Jaga kesehatan yaaa!!! 💚✨
+            </div>
+        </div>
+    </div>
+
+    <style>
+    @keyframes zoomIn {
+        from { transform:scale(0.5); opacity:0; }
+        to   { transform:scale(1); opacity:1; }
+    }
+    </style>
+    """
+
+    components.html(html, height=650, scrolling=False)
+
+    # --- bunyi ting 0.8 detik ---
+    wav = generate_ting_wav()  # pastikan durasi 0.8s pada fungsi pembuatnya
+    datauri = wav_bytes_to_datauri(wav)
+
+    st.markdown(
+        f"""
+        <audio autoplay>
+            <source src="{datauri}" type="audio/wav">
+        </audio>
+        """,
+        unsafe_allow_html=True
+    )
+
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
