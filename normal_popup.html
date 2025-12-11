@@ -1,75 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<meta charset="utf-8">
 <style>
-body {
-    margin:0;
-    padding:0;
-}
-#popup {
-    position: fixed;
-    inset:0;
-    background: rgba(0,0,0,0.75);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    z-index:999999;
-}
-.box {
-    background:rgba(255,255,255,0.15);
-    padding:60px 80px;
-    border-radius:20px;
-    text-align:center;
-    backdrop-filter:blur(8px);
-    border:2px solid rgba(0,255,0,0.4);
-    box-shadow:0 0 25px rgba(0,255,0,0.6);
-}
-.icon {
-    width:130px;
-    filter: drop-shadow(0 0 10px lime);
-    margin-bottom:20px;
-}
-.text {
-    font-size:38px;
-    font-weight:900;
-    color:#00ff55;
-    text-shadow:0 0 20px rgba(0,255,0,0.6);
-}
+  html,body{margin:0;padding:0;height:100%}
+  .root{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0); animation:fadeBg 0.36s forwards; z-index:999999}
+  @keyframes fadeBg{ to{background:rgba(0,0,0,0.65); backdrop-filter:blur(7px);} }
+  .box{width:640px;max-width:92%; background:linear-gradient(135deg,#0fb06a,#38ffb0); padding:34px;border-radius:28px; text-align:center; color:white; box-shadow:0 30px 60px rgba(3,60,24,0.28); animation:pop .48s;}
+  @keyframes pop{0%{transform:scale(.35);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+  .check{font-size:110px;margin-bottom:6px;filter:drop-shadow(0 0 18px rgba(0,255,170,0.85)); animation:pulse 1.2s infinite}
+  @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
+  .title{font-size:36px;font-weight:900}
+  .sub{font-size:20px;margin-top:8px;opacity:0.96}
+  .spark{position:absolute;width:10px;height:10px;border-radius:50%; background:white; opacity:0; box-shadow:0 0 10px rgba(255,255,255,0.9); animation:spark 1.6s infinite}
+  .s1{top:12px; left:16%} .s2{top:8px; right:18%} .s3{bottom:18px; left:26%}
+  @keyframes spark{0%{opacity:0;transform:scale(.3)}40%{opacity:1;transform:scale(1.2) translateY(-6px)}80%{opacity:0.5;transform:scale(.8) translateY(-3px)}100%{opacity:0}}
 </style>
 </head>
-
 <body>
-
-<div id="popup">
-  <div class="box" id="box">
-    <img src="https://cdn-icons-png.flaticon.com/512/845/845646.png" class="icon">
-    <div class="text">Datamu Normal, Jaga Kesehatan Yaa!!!</div>
+  <div class="root" id="root">
+    <div class="box">
+      <div class="check">✔️</div>
+      <div class="title">Datamu Normal</div>
+      <div class="sub">Jaga kesehatan yaaa!!! 💚✨</div>
+      <div class="spark s1"></div>
+      <div class="spark s2"></div>
+      <div class="spark s3"></div>
+    </div>
   </div>
-</div>
 
 <script>
-// animasi pop in
-anime({
-    targets: '#box',
-    scale: [0.6, 1],
-    duration: 400,
-    easing: 'easeOutBack'
-});
-
-// animasi shake ringan
-anime({
-    targets: '#box',
-    translateX: [-6, 6, -3, 3, 0],
-    duration: 450,
-    easing: 'easeInOutQuad'
-});
-
-// auto close
-setTimeout(()=>{
-    document.getElementById("popup").style.display = "none";
-}, 1500);
+  setTimeout(()=>{ const e=document.getElementById('root'); if(e) e.remove(); }, 2100);
 </script>
-
 </body>
 </html>

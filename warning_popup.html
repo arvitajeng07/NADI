@@ -1,75 +1,43 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<meta charset="utf-8">
 <style>
-body {
-    margin:0;
-    padding:0;
-}
-#popup {
-    position: fixed;
-    inset:0;
-    background: rgba(0,0,0,0.75);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    z-index:999999;
-}
-.box {
-    background:rgba(255,255,255,0.1);
-    padding:60px 80px;
-    border-radius:20px;
-    text-align:center;
-    backdrop-filter:blur(8px);
-    border:2px solid rgba(255,0,0,0.4);
-    box-shadow:0 0 25px rgba(255,0,0,0.6);
-}
-.icon {
-    width:130px;
-    filter: drop-shadow(0 0 10px red);
-    margin-bottom:20px;
-}
-.text {
-    font-size:40px;
-    font-weight:900;
-    color:#ff1e1e;
-    text-shadow:0 0 20px rgba(255,0,0,0.7);
-}
+  html,body{margin:0;padding:0;height:100%;}
+  .root{
+    position:fixed; inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0);backdrop-filter:blur(0px);
+    animation:fadeBg .35s forwards; z-index:999999;
+  }
+  @keyframes fadeBg{ to{background:rgba(0,0,0,0.78); backdrop-filter:blur(8px);} }
+  .box{
+    width:640px; max-width:92%;
+    background:linear-gradient(135deg,#ff4b4b,#a60000);
+    border-radius:24px;padding:36px;color:#fff;text-align:center;
+    animation:popin .36s cubic-bezier(.2,.9,.2,1),shake .5s .28s;
+    box-shadow:0 40px 80px rgba(0,0,0,0.6);
+  }
+  @keyframes popin{from{transform:scale(.45);opacity:0}60%{transform:scale(1.12)}to{transform:scale(1);opacity:1}}
+  @keyframes shake{0%{transform:translateX(0)}20%{transform:translateX(-12px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}100%{transform:translateX(0)}}
+  .icon{font-size:92px;margin-bottom:8px;filter:drop-shadow(0 0 12px rgba(255,80,80,0.8)); animation:glw 1s infinite alternate;}
+  @keyframes glw{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+  .title{font-size:34px;font-weight:900;margin:6px 0}
+  .msg{font-size:18px;opacity:0.95}
 </style>
 </head>
-
 <body>
-
-<div id="popup">
-  <div class="box" id="box">
-    <img src="https://cdn-icons-png.flaticon.com/512/463/463612.png" class="icon">
-    <div class="text">PERINGATAN ANOMALI</div>
+  <div class="root" id="root">
+    <div class="box">
+      <div class="icon">🚨</div>
+      <div class="title">PERINGATAN: Nilai Tensi Tidak Normal!</div>
+      <div class="msg">Terdeteksi hipertensi / hipotensi. Segera cek data dan tindak lanjut.</div>
+    </div>
   </div>
-</div>
 
 <script>
-// animation
-anime({
-    targets: '#box',
-    scale: [0.6, 1],
-    duration: 400,
-    easing: 'easeOutBack'
-});
-
-anime({
-    targets: '#box',
-    translateX: [-8, 8, -4, 4, 0],
-    duration: 500,
-    easing: 'easeInOutQuad'
-});
-
-// auto close
-setTimeout(()=>{
-    document.getElementById("popup").style.display = "none";
-}, 1500);
-
+  // remove after 2.2s
+  setTimeout(()=>{ const e=document.getElementById('root'); if(e) e.remove(); }, 2200);
 </script>
-
 </body>
 </html>
