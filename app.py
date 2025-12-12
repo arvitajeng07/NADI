@@ -21,36 +21,33 @@ import re
 # PENGUNJUNG & ANALISIS TRACKING
 # ============================================================
 
-STATS_FILE = "stats.txt"
+# stats file (visitor + analyses)
+STATS_PATH = "nadi_stats.json"
 
-def init_stats():
-    if not os.path.exists(STATS_FILE):
-        with open(STATS_FILE, "w") as f:
-            f.write("visitors=0\nanalyses=0")
+def load_stats():
+    default = {"visitors": 0, "analyses": 0}
+    try:
+        if os.path.exists(STATS_PATH):
+            with open(STATS_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        else:
+            return default
+    except Exception:
+        return default
 
-def read_stats():
-    with open(STATS_FILE, "r") as f:
-        lines = f.read().splitlines()
-    stats = {}
-    for line in lines:
-        key, val = line.split("=")
-        stats[key] = int(val)
-    return stats
+def save_stats(stats):
+    try:
+        with open(STATS_PATH, "w", encoding="utf-8") as f:
+            json.dump(stats, f)
+    except Exception:
+        pass
 
-def write_stats(stats):
-    with open(STATS_FILE, "w") as f:
-        for k, v in stats.items():
-            f.write(f"{k}={v}\n")
-
-# Inisialisasi file
-init_stats()
-
-# Hitung pengunjung baru
-if "visitor_logged" not in st.session_state:
-    stats = read_stats()
-    stats["visitors"] += 1
-    write_stats(stats)
-    st.session_state.visitor_logged = True
+# increment visitor once when first load app in session
+if not st.session_state.get("visitor_counted"):
+    stats = load_stats()
+    stats["visitors"] = stats.get("visitors", 0) + 1
+    save_stats(stats)
+    st.session_state.visitor_counted = True
 
 # ============================================================
 # PAGE CONFIG
@@ -104,7 +101,7 @@ st.markdown(
 # AUDIO HELPERS
 # ============================================================
 
-def generate_siren_wav(duration=1.0, sr=44100):
+def generate_siren_wav(duration=2.0, sr=44100):
     t = np.linspace(0, duration, int(sr*duration), endpoint=False)
     mod = 0.5 * (1 + np.sin(2*np.pi*2.2*t))
     freq = 700 + 600*np.sin(2*np.pi*1.0*t)
@@ -116,7 +113,7 @@ def generate_siren_wav(duration=1.0, sr=44100):
     buf.seek(0)
     return buf.read()
 
-def generate_ting_wav(duration=0.45, sr=44100):
+def generate_ting_wav(duration=1.0, sr=44100):
     t = np.linspace(0, duration, int(sr*duration), endpoint=False)
     tone1 = 0.7*np.sin(2*np.pi*1400*t)*np.linspace(1,0,len(t))
     tone2 = 0.5*np.sin(2*np.pi*1800*t)*np.linspace(1,0,len(t))
@@ -446,6 +443,7 @@ def render_normal_overlay(datauri=None, duration_ms=1800):
 
     st.markdown(html, unsafe_allow_html=True)
 
+
 # ============================================================
 # POP-UP WARNING (WITH CLOSE)
 # ============================================================
@@ -455,68 +453,69 @@ def render_warning_inline(duration_ms=1600):
     datauri = wav_bytes_to_datauri(wav)
 
     html = f"""
-    <div id="warn-root" style="
-        position:fixed; inset:0; z-index:999999;
-        background:rgba(0,0,0,0.88); backdrop-filter:blur(12px);
-        display:flex; justify-content:center; align-items:center;
-    ">
+<div id="warn-root" style="
+    position:fixed; inset:0; z-index:999999;
+    background:rgba(0,0,0,0.88); backdrop-filter:blur(12px);
+    display:flex; justify-content:center; align-items:center;
+">
 
-      <div style="
-            width:620px; background:linear-gradient(135deg,#ff2d2d,#8b0000);
-            border-radius:30px; padding:40px 32px; text-align:center;
-            color:white; box-shadow:0 40px 120px rgba(255,0,0,0.45);
-            position:relative; animation:popWarn .8s ease;
-      ">
+  <div style="
+        width:620px; background:linear-gradient(135deg,#ff2d2d,#8b0000);
+        border-radius:30px; padding:40px 32px; text-align:center;
+        color:white; box-shadow:0 40px 120px rgba(255,0,0,0.45);
+        position:relative; animation:popWarn .8s ease;
+  ">
 
-        <!-- Tombol Close -->
-        <div onclick="document.getElementById('warn-root').remove();" 
-             style="
-             position:absolute; top:10px; right:16px;
-             background:rgba(255,255,255,0.25);
-             border-radius:50%; width:34px; height:34px;
-             display:flex; justify-content:center; align-items:center;
-             font-size:20px; cursor:pointer; font-weight:700;
-             backdrop-filter:blur(4px);">✖</div>
+    <div onclick="document.getElementById('warn-root').remove();" 
+         style="
+         position:absolute; top:10px; right:16px;
+         background:rgba(255,255,255,0.25);
+         border-radius:50%; width:34px; height:34px;
+         display:flex; justify-content:center; align-items:center;
+         font-size:20px; cursor:pointer; font-weight:700;
+         backdrop-filter:blur(4px);">✖</div>
 
-        <div style="font-size:108px; 
-             filter:drop-shadow(0 0 28px rgba(255,0,0,1));
-             animation:glowWarn .5s infinite alternate;">🚨</div>
+    <div style="
+         font-size:108px;
+         filter:drop-shadow(0 0 28px rgba(255,0,0,1));
+         animation:glowWarn .5s infinite alternate;
+    ">🚨</div>
 
-        <h1 style="margin:0; font-size:40px; font-weight:900;">
-            PERINGATAN TENSI TIDAK NORMAL!
-        </h1>
-        <p style="font-size:20px; margin-top:10px;">
-            Hipertensi / Hipotensi terdeteksi — silakan cek ulang.
-        </p>
+    <h1 style="margin:0; font-size:40px; font-weight:900;">
+        PERINGATAN TENSI TIDAK NORMAL!
+    </h1>
 
-      </div>
+    <p style="font-size:20px; margin-top:10px;">
+        Hipertensi / Hipotensi terdeteksi — silakan cek ulang.
+    </p>
 
-      <audio autoplay>
-        <source src="{datauri}" type="audio/wav">
-      </audio>
-    </div>
+  </div>
 
-    <style>
-    @keyframes popWarn {{
-        0% {{ transform:scale(.4); }}
-        60% {{ transform:scale(1.12); }}
-        100% {{ transform:scale(1); }}
-    }}
-    @keyframes glowWarn {{
-        from {{ filter:drop-shadow(0 0 18px rgba(255,80,80,0.85)); }}
-        to   {{ filter:drop-shadow(0 0 38px rgba(255,0,0,1)); }}
-    }}
-    </style>
+  <audio autoplay><source src="{datauri}" type="audio/wav"></audio>
 
-    <script>
-    setTimeout(function(){{
-        var el = document.getElementById('warn-root');
-        if(el) el.remove();
-    }}, {duration_ms});
-    </script>
-    """
+</div>
 
+<style>
+@keyframes popWarn {
+    0%   { transform:scale(.4); opacity:0; }
+    60%  { transform:scale(1.12); opacity:1; }
+    100% { transform:scale(1); opacity:1; }
+}
+@keyframes glowWarn {
+    from { filter:drop-shadow(0 0 18px rgba(255,90,90,0.85)); }
+    to   { filter:drop-shadow(0 0 38px rgba(255,0,0,1)); }
+}
+</style>
+
+<script>
+setTimeout(function(){
+    var el = document.getElementById('warn-root');
+    if(el) el.remove();
+}, {duration_ms});
+</script>
+"""
     st.markdown(html, unsafe_allow_html=True)
+
 
 # ============================================================
 # BERANDA / LANDING PAGE
@@ -525,12 +524,10 @@ def render_warning_inline(duration_ms=1600):
 if st.session_state.page == "beranda":
 
     st.markdown("<div class='big-nadi-title'>❤️ NADI : Numeric Analysis of Diastolic & Systolic</div>", unsafe_allow_html=True)
-
     st.markdown(
-        "<div class='nadi-desc'><b>Alat sederhana untuk menganalisis pola tekanan darah menggunakan pendekatan komputasi RK4.</b><br>"
-        "NADI mendeteksi hipertensi/hipotensi, memprediksi perubahan tensi, dan membantu membaca pola kesehatan secara numerik.<br><br>"
-        "<b>NADI bukan alat diagnosis medis.</b> Hasil hanya gambaran komputasi untuk edukasi.<br><br>"
-        "<i>Selamat datang. Biarkan NADI membaca aliran kesehatanmu.</i></div>",
+        "<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>"
+        "Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>"
+        "<b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>",
         unsafe_allow_html=True
     )
 
@@ -550,6 +547,28 @@ if st.session_state.page == "beranda":
                     "</div>", unsafe_allow_html=True)
         if st.button("➡ Masuk ke Personal"):
             st.session_state.page = "personal"
+    # beranda nav buttons (clean)
+    st.markdown("<br>", unsafe_allow_html=True)
+    nav1, nav2, nav3 = st.columns(3)
+    with nav1:
+        if st.button("📊 Hasil Analisis Terakhir"):
+            st.session_state.page = "hasil"
+    with nav2:
+        if st.button("❔ Mengapa RK4?"):
+            st.session_state.page = "rk4info"
+    with nav3:
+        if st.button("🔄 Reset"):
+            st.session_state.last_result = None
+            st.session_state.last_context = None
+            st.success("Riwayat berhasil direset!")
+
+    # visitor / analyses stats
+    stats = load_stats()
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("👥 Total Pengunjung (sesi)", stats.get("visitors", 0))
+    with col2:
+        st.metric("📊 Total Analisis", stats.get("analyses", 0))
 
     st.markdown("---")
 
