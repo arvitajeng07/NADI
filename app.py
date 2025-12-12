@@ -73,7 +73,7 @@ st.markdown(
 # -----------------------
 # AUDIO HELPERS (siren + ting)
 # -----------------------
-def generate_siren_wav(duration=3.0, sr=44100):
+def generate_siren_wav(duration=6.0, sr=44100):
     # siren with pitch modulation (short)
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     mod = 0.5 * (1 + np.sin(2 * np.pi * 2.2 * t))  # faster mod for urgency
@@ -88,7 +88,7 @@ def generate_siren_wav(duration=3.0, sr=44100):
     buf.seek(0)
     return buf.read()
 
-def generate_ting_wav(duration=1.0, sr=44100):
+def generate_ting_wav(duration=3.0, sr=44100):
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     tone1 = 0.7 * np.sin(2 * np.pi * 1400 * t) * np.linspace(1, 0, len(t))
     tone2 = 0.5 * np.sin(2 * np.pi * 1800 * t) * np.linspace(1, 0, len(t))
@@ -140,138 +140,145 @@ def detect_anomaly_df(df,
 # -----------------------
 # RENDER NORMAL — INLINE FULLSCREEN (overlay via st.markdown)
 # -----------------------
-def render_normal_overlay(datauri=None, duration_ms=1800):
+def render_normal_overlay(datauri=None, duration_ms=1500):
+    import time
+    uid = str(int(time.time() * 1000))
+
     audio_html = ""
     if datauri:
         audio_html = f'<audio autoplay><source src="{datauri}" type="audio/wav"></audio>'
 
     html = f"""
-    <div id="normal-root" style="
-        position:fixed; inset:0;
-        background:rgba(0,0,0,0.5);
-        backdrop-filter:blur(7px);
-        z-index:999999;
-        display:flex; justify-content:center; align-items:center;
-        animation:fadein .18s forwards;
-    ">
-      <div style="
-            width:520px;
-            background:linear-gradient(135deg,#00e09f,#00b46f);
-            border-radius:30px;
-            padding:32px;
-            text-align:center;
-            color:white;
-            box-shadow:0 40px 80px rgba(0,50,20,0.4);
-            animation:pop .35s cubic-bezier(.2,.9,.2,1);
-            position:relative;
-      ">
-        <div style="font-size:90px; margin-bottom:10px; animation:pulse 1.3s infinite; filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));">✔️</div>
-        <h2 style="margin:0; font-size:36px; font-weight:900;">Datamu Normal!</h2>
-        <p style="font-size:20px; opacity:0.95; margin-top:8px;">Jaga kesehatan yaaa!! 💚✨</p>
-      ">
-        <div style="position:absolute; top:-10px; left:70px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite;"></div>
-        <div style="position:absolute; top:-14px; right:60px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .3s;"></div>
-        <div style="position:absolute; bottom:-10px; left:80px; width:14px; height:14px; background:white; border-radius:50%; opacity:0; box-shadow:0 0 14px white; animation:spark 1.5s infinite .6s;"></div>
-      </div>
-
-      {audio_html}
+    <div id="normal-root-{uid}" class="nadi-popup-normal">
+        <div class="nadi-popup-box">
+            <div style="font-size:90px; margin-bottom:10px;">✔️</div>
+            <h2 style="margin:0; font-size:34px; font-weight:900;">Datamu Normal!</h2>
+            <p style="font-size:20px; opacity:0.95; margin-top:8px;">Jaga kesehatan yaaa!! 💚✨</p>
+        </div>
+        {audio_html}
     </div>
 
     <style>
-    @keyframes pop {{
-        0% {{ transform:scale(.4); opacity:0; }}
-        60% {{ transform:scale(1.12); opacity:1; }}
+    /* Overlay background */
+    #normal-root-{uid} {{
+        position:fixed; inset:0;
+        background:rgba(0,0,0,0.55);
+        backdrop-filter:blur(7px);
+        z-index:999999;
+        display:flex; justify-content:center; align-items:center;
+        animation: zoomIn 0.35s ease forwards;
+    }}
+
+    /* Box */
+    #normal-root-{uid} .nadi-popup-box {{
+        background:linear-gradient(135deg,#00e09f,#00b46f);
+        border-radius:30px;
+        padding:32px;
+        text-align:center;
+        color:white;
+        box-shadow:0 40px 80px rgba(0,50,20,0.4);
+        animation: zoomIn 0.35s ease forwards;
+    }}
+
+    /* ZOOM IN */
+    @keyframes zoomIn {{
+        0% {{ transform:scale(0.4); opacity:0; }}
+        80% {{ transform:scale(1.15); opacity:1; }}
         100% {{ transform:scale(1); opacity:1; }}
     }}
-    @keyframes fadein {{
-        0% {{ opacity:0; }}
-        100% {{ opacity:1; }}
-    }}
-    @keyframes pulse {{
-        0% {{ transform:scale(1); }}
-        50% {{ transform:scale(1.22); }}
-        100% {{ transform:scale(1); }}
-    }}
-    @keyframes spark {{
-        0% {{ opacity:0; transform:scale(.3); }}
-        20% {{ opacity:1; transform:scale(1.4) translateY(-6px); }}
-        60% {{ opacity:.5; transform:scale(1) translateY(-2px); }}
-        100% {{ opacity:0; transform:scale(.3); }}
+
+    /* ZOOM OUT + FADE OUT */
+    @keyframes zoomFadeOut {{
+        0% {{ transform:scale(1); opacity:1; }}
+        100% {{ transform:scale(0.7); opacity:0; }}
     }}
     </style>
 
     <script>
-    setTimeout(function(){{
-        var el = document.getElementById('normal-root');
-        if(el && el.parentNode) el.parentNode.removeChild(el);
-    }}, {duration_ms});
+        // jalankan fade-out setelah durasi
+        setTimeout(function() {{
+            var el = document.getElementById("normal-root-{uid}");
+            if (el) {{
+                el.style.animation = "zoomFadeOut 0.6s ease forwards";
+                setTimeout(function() {{
+                    if (el && el.parentNode) el.remove();
+                }}, 600);
+            }}
+        }}, {duration_ms});
     </script>
     """
+
     st.markdown(html, unsafe_allow_html=True)
 
 # -----------------------
 # RENDER WARNING — INLINE FULLSCREEN (super dramatic) + siren (1s)
 # -----------------------
-def render_warning_inline(duration_ms=1000):
+def render_warning_inline(duration_ms=1200):
+    import time
+    uid = str(int(time.time() * 1000))
     wav = generate_siren_wav(duration=1.0)
     datauri = wav_bytes_to_datauri(wav)
+
     html = f"""
-    <div id="warn-root" style="
+    <div id="warn-root-{uid}" class="nadi-popup-warn">
+        <div class="warn-box">
+            <div style="font-size:100px; margin-bottom:10px;">🚨</div>
+            <h1 style="margin:0; font-size:36px; font-weight:900;">PERINGATAN TENSI TIDAK NORMAL!</h1>
+            <p style="font-size:20px; opacity:0.95;">Hipertensi / hipotensi terdeteksi.</p>
+        </div>
+
+        <audio autoplay>
+            <source src="{datauri}" type="audio/wav">
+        </audio>
+    </div>
+
+    <style>
+    #warn-root-{uid} {{
         position:fixed; inset:0;
         background:rgba(0,0,0,0.88);
         backdrop-filter:blur(10px);
         z-index:999999;
         display:flex; justify-content:center; align-items:center;
-        animation:fadeIn .12s ease-out;
-    ">
-      <div style="
-            width:620px;
-            max-width:92%;
-            background:linear-gradient(135deg,#ff2d2d,#8b0000);
-            border-radius:30px;
-            padding:40px 32px;
-            text-align:center;
-            color:white;
-            box-shadow:0 40px 120px rgba(255,0,0,0.45);
-            animation:popWarn .9s cubic-bezier(.18,.89,.32,1.28);
-            position:relative;
-      ">
-        <div style="font-size:108px; margin-bottom:10px; filter:drop-shadow(0 0 28px rgba(255,0,0,1)); animation:glowWarn .4s infinite alternate;">🚨</div>
-        <h1 style="margin:0; font-size:40px; font-weight:900; letter-spacing:0.6px;">PERINGATAN TENSI TIDAK NORMAL!</h1>
-        <p style="font-size:20px; opacity:.95; margin-top:8px;">Hipertensi / hipotensi terdeteksi. Mohon cek ulang datamu.</p>
-      </div>
+        animation: zoomIn 0.45s ease forwards;
+    }}
 
-      <audio autoplay>
-        <source src="{datauri}" type="audio/wav">
-      </audio>
-    </div>
+    #warn-root-{uid} .warn-box {{
+        background:linear-gradient(135deg,#ff2d2d,#8b0000);
+        padding:40px 32px;
+        border-radius:30px;
+        text-align:center;
+        color:white;
+        box-shadow:0 40px 120px rgba(255,0,0,0.45);
+        animation: zoomIn 0.45s ease forwards;
+    }}
 
-    <style>
-    @keyframes fadeIn {{ from {{ opacity:0; }} to {{ opacity:1; }} }}
-    @keyframes popWarn {{
-        0% {{ transform:scale(.28); opacity:0; }}
-        50% {{ transform:scale(1.18); opacity:1; }}
+    /* zoom in */
+    @keyframes zoomIn {{
+        0% {{ transform:scale(0.3); opacity:0; }}
+        75% {{ transform:scale(1.18); opacity:1; }}
         100% {{ transform:scale(1); opacity:1; }}
     }}
-    @keyframes shakeWarn {{
-        0% {{ transform:translateX(0); }}
-        25% {{ transform:translateX(-18px); }}
-        50% {{ transform:translateX(14px); }}
-        75% {{ transform:translateX(-10px); }}
-        100% {{ transform:translateX(0); }}
+
+    /* zoom out + fade out */
+    @keyframes zoomFadeOut {{
+        0% {{ transform:scale(1); opacity:1; }}
+        100% {{ transform:scale(0.6); opacity:0; }}
     }}
-    @keyframes glowWarn {{ from {{ filter:drop-shadow(0 0 18px rgba(255,80,80,0.85)); }} to {{ filter:drop-shadow(0 0 30px rgba(255,0,0,1)); }} }}
-    /* apply a short visible shake shortly after pop */
-    #warn-root > div {{ animation: popWarn .9s cubic-bezier(.18,.89,.32,1.28), shakeWarn .6s ease-in-out .12s; }}
     </style>
 
     <script>
-    setTimeout(function(){{
-        var el = document.getElementById('warn-root');
-        if(el && el.parentNode) el.parentNode.removeChild(el);
-    }}, {duration_ms});
+        setTimeout(function() {{
+            var el = document.getElementById("warn-root-{uid}");
+            if (el) {{
+                el.style.animation = "zoomFadeOut 0.65s ease forwards";
+                setTimeout(function() {{
+                    if (el && el.parentNode) el.remove();
+                }}, 650);
+            }}
+        }}, {duration_ms});
     </script>
     """
+
     st.markdown(html, unsafe_allow_html=True)
 
 # ============================================================
