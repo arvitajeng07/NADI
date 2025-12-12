@@ -1,4 +1,4 @@
-# app.py — NADI (RK4) — FINAL (Audio fix: play() method)
+# app.py — NADI (RK4) — FINAL (Sirine 5 detik + Audio Fix + Pop-up No Leak)
 # ============================================================
 
 import streamlit as st
@@ -83,7 +83,7 @@ st.markdown(
 # -----------------------
 # AUDIO HELPERS (siren + ting)
 # -----------------------
-def generate_siren_wav(duration=6.0, sr=44100):
+def generate_siren_wav(duration=5.0, sr=44100): # DURATION 5.0 detik
     # siren with pitch modulation (short)
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     mod = 0.5 * (1 + np.sin(2 * np.pi * 2.2 * t))  # faster mod for urgency
@@ -149,7 +149,6 @@ def detect_anomaly_df(df,
 
 # -----------------------
 # RENDER NORMAL — INLINE FULLSCREEN (overlay via st.markdown)
-# DENGAN PERBAIKAN audioEl.play()
 # -----------------------
 def render_normal_overlay(datauri=None, duration_ms=1500, click_id=""):
     import time
@@ -207,7 +206,7 @@ def render_normal_overlay(datauri=None, duration_ms=1500, click_id=""):
     """
     st.markdown(html, unsafe_allow_html=True)
     
-    # SCRIPT HACK: Trigger tombol tersembunyi setelah durasi
+    # SCRIPT HACK: Trigger tombol tersembunyi setelah durasi pop-up
     script = f"""
     <script>
         // PERBAIKAN: Coba memutar audio secara eksplisit
@@ -217,7 +216,7 @@ def render_normal_overlay(datauri=None, duration_ms=1500, click_id=""):
             audioEl.play().catch(e => console.log("Audio Play Gagal:", e));
         }}
 
-        // Panggil tombol tersembunyi setelah durasi singkat
+        // Panggil tombol tersembunyi setelah durasi singkat (100ms) untuk RERUN
         setTimeout(function() {{
             var el = document.getElementById("normal-root-{uid}");
             if (el && el.parentNode) {{
@@ -238,13 +237,12 @@ def render_normal_overlay(datauri=None, duration_ms=1500, click_id=""):
 
 
 # -----------------------
-# RENDER WARNING — INLINE FULLSCREEN (super dramatic) + siren (1s)
-# DENGAN PERBAIKAN audioEl.play()
+# RENDER WARNING — INLINE FULLSCREEN (super dramatic) + siren (5s)
 # -----------------------
 def render_warning_inline(duration_ms=1200, click_id=""):
     import time
     uid = str(int(time.time() * 1000))
-    wav = generate_siren_wav(duration=1.0)
+    wav = generate_siren_wav(duration=5.0) # Menggunakan durasi 5.0 detik
     datauri = wav_bytes_to_datauri(wav)
 
     html = f"""
@@ -296,7 +294,7 @@ def render_warning_inline(duration_ms=1200, click_id=""):
     """
     st.markdown(html, unsafe_allow_html=True)
 
-    # SCRIPT HACK: Trigger tombol tersembunyi setelah durasi
+    # SCRIPT HACK: Trigger tombol tersembunyi setelah durasi pop-up
     script = f"""
     <script>
         // PERBAIKAN: Coba memutar audio secara eksplisit
@@ -306,7 +304,7 @@ def render_warning_inline(duration_ms=1200, click_id=""):
             audioEl.play().catch(e => console.log("Audio Play Gagal:", e));
         }}
 
-        // Panggil tombol tersembunyi setelah durasi singkat
+        // Panggil tombol tersembunyi setelah durasi singkat (100ms) untuk RERUN
         setTimeout(function() {{
             var el = document.getElementById("warn-root-{uid}");
             if (el && el.parentNode) {{
@@ -363,19 +361,18 @@ if st.session_state.page == "beranda":
 
     a, b, c = st.columns(3)
     with a:
-        if st.button("📊 Hasil Analisis Terakhir", key="btn_hasil"):
+        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=primary]\').click()">📊 Hasil Analisis Terakhir</button>', unsafe_allow_html=True)
+        if st.button("📊 Hasil Analisis Terakhir", key="btn_hasil", help="trigger"):
             st.session_state.page = "hasil"
-            st.rerun()
     with b:
-        if st.button("❔ Mengapa RK4?", key="btn_rk4"):
+        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=secondary]\').click()">❔ Mengapa RK4?</button>', unsafe_allow_html=True)
+        if st.button("❔ Mengapa RK4?", key="btn_rk4", help="trigger"):
              st.session_state.page = "rk4info"
-             st.rerun()
     with c:
-        if st.button("🔄 Reset Hasil", key="btn_reset"):
+        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=tertiary]\').click()">🔄 Reset Hasil</button>', unsafe_allow_html=True)
+        if st.button("🔄 Reset Hasil", key="btn_reset", help="trigger"):
              st.session_state.last_result = None
              st.session_state.last_context = None
-             st.session_state.show_result_actions = False
-             st.session_state.show_result_actions_personal = False
              st.success("Riwayat berhasil dibersihkan.")
 
 
@@ -523,12 +520,12 @@ if st.session_state.page == "input":
 
                     # Tampilkan pop-up dan panggil tombol tersembunyi "continue_input_btn_hack"
                     if alert_needed:
-                        # Durasi pop-up dipersingkat agar Streamlit cepat RERUN
+                        # Pop-up hanya ditampilkan 100ms agar kode bocor cepat hilang
                         render_warning_inline(duration_ms=100, click_id="continue_input_btn_hack")
                     else:
                         wav = generate_ting_wav(duration=0.45)
                         datauri = wav_bytes_to_datauri(wav)
-                        # Durasi pop-up dipersingkat agar Streamlit cepat RERUN
+                        # Pop-up hanya ditampilkan 100ms agar kode bocor cepat hilang
                         render_normal_overlay(datauri=datauri, duration_ms=100, click_id="continue_input_btn_hack")
                     
                     # Tombol tersembunyi yang akan dipicu oleh JavaScript
@@ -642,10 +639,12 @@ if st.session_state.page == "personal":
 
         # Tampilkan pop-up dan panggil tombol tersembunyi "continue_personal_btn_hack"
         if dfp["Anom_Total"].iloc[-1]:
+            # Pop-up hanya ditampilkan 100ms agar kode bocor cepat hilang
             render_warning_inline(duration_ms=100, click_id="continue_personal_btn_hack")
         else:
             wav = generate_ting_wav(duration=0.45)
             datauri = wav_bytes_to_datauri(wav)
+            # Pop-up hanya ditampilkan 100ms agar kode bocor cepat hilang
             render_normal_overlay(datauri=datauri, duration_ms=100, click_id="continue_personal_btn_hack")
             
         # Tombol tersembunyi yang akan dipicu oleh JavaScript
