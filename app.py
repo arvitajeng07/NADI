@@ -339,14 +339,19 @@ if st.session_state.page == "beranda":
     st.stop()
 
 # ============================================================
-# INPUT DATA (UPLOAD)
+# INPUT DATA (UPLOAD) - REVISI (menggunakan st.form + debug)
 # ============================================================
 if st.session_state.page == "input":
     st.header("📁 Analisis Data Populasi (Upload CSV / XLSX)")
-    uploaded = st.file_uploader("Upload CSV / XLSX (minimal kolom: Nama, Systolic, Diastolic)", type=["csv","xlsx"])
-    run = st.button("Analisis (RK4)")
 
+    # Form: file_uploader + submit dalam satu interaksi
+    with st.form("upload_form", clear_on_submit=False):
+        uploaded = st.file_uploader("Upload CSV / XLSX (minimal kolom: Nama, Systolic, Diastolic)", type=["csv","xlsx"])
+        submitted = st.form_submit_button("Analisis (RK4)")
+
+    # Quick debug info tentang file
     if uploaded is not None:
+        st.info(f"File terdeteksi: **{uploaded.name}** — ukuran: {getattr(uploaded, 'size', 'n/a')} bytes")
         try:
             if uploaded.name.lower().endswith(".csv"):
                 df = pd.read_csv(uploaded)
@@ -356,13 +361,14 @@ if st.session_state.page == "input":
             st.error(f"Gagal membaca file: {e}")
             st.stop()
 
+        # Bersihkan nama kolom
         df.columns = [c.strip() for c in df.columns]
-        st.info("Preview data (50 baris pertama):")
-        st.dataframe(df.head(50))
+        st.info(f"Kolom terdeteksi: {list(df.columns)}")
+        st.dataframe(df.head(30))
 
         required = {"Nama","Systolic","Diastolic"}
         if not required.issubset(df.columns):
-            st.error(f"Kolom minimal harus ada: {sorted(required)}")
+            st.error(f"Kolom minimal harus ada: {sorted(required)}. Periksa header CSV (spasi / BOM / encoding).")
             st.stop()
 
         # handle tanggal
@@ -375,47 +381,79 @@ if st.session_state.page == "input":
             N = len(df)
             df["Tanggal"] = [pd.Timestamp(today - timedelta(days=(N-1-i))) for i in range(N)]
 
-        if run:
-            parts = []
-            alert_needed = False
-            alert_names = []
+        # Jika user menekan Analisis
+        if submitted:
+            try:
+                parts = []
+                alert_needed = False
+                alert_names = []
+                processing_errors = []
 
-            for name, g in df.groupby("Nama", sort=False):
-                g2 = g.sort_values("Tanggal").reset_index(drop=True)
-                g2 = g2[["Nama","Tanggal","Systolic","Diastolic"]].copy()
-                g2 = detect_anomaly_df(g2)
+                # Pastikan kolom numeric
+                df["Systolic"] = pd.to_numeric(df["Systolic"], errors="coerce")
+                df["Diastolic"] = pd.to_numeric(df["Diastolic"], errors="coerce")
 
-                pred_s = rk4_predict_series(g2["Systolic"])
-                pred_d = rk4_predict_series(g2["Diastolic"])
+                # Tampilkan ringkasan sebelum loop
+                st.write(f"Memulai analisis untuk {df['Nama'].nunique()} pasien, total baris: {len(df)}")
 
-                g2["Prediksi_Systolic"] = np.nan
-                g2["Prediksi_Diastolic"] = np.nan
-                if pred_s is not None:
-                    g2.at[len(g2)-1, "Prediksi_Systolic"] = pred_s
-                    g2.at[len(g2)-1, "Prediksi_Diastolic"] = pred_d
+                for name, g in df.groupby("Nama", sort=False):
+                    try:
+                        g2 = g.sort_values("Tanggal").reset_index(drop=True)
+                        g2 = g2[["Nama","Tanggal","Systolic","Diastolic"]].copy()
 
-                parts.append(g2)
-                if g2["Anom_Total"].any():
-                    alert_needed = True
-                    alert_names.append(name)
+                        # Jika semua nilai NaN untuk tensi -> lewati & catat
+                        if g2["Systolic"].isna().all() and g2["Diastolic"].isna().all():
+                            processing_errors.append(f"{name}: semua nilai Systolic/Diastolic kosong. Dilewati.")
+                            continue
 
-            result = pd.concat(parts, ignore_index=True)
-            st.subheader("Hasil Analisis")
-            st.dataframe(result)
-            st.session_state.last_result = result
-            st.session_state.last_context = {"mode":"Input","file":uploaded.name}
+                        g2 = detect_anomaly_df(g2)
 
-            if alert_needed:
-                st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:8])}")
-                # show dramatic warning (inline) with siren for 1 second
-                render_warning_inline(duration_ms=1000)
-            else:
-                # show gemoy normal overlay FIRST, then the success message
-                wav = generate_ting_wav(duration=0.45)
-                datauri = wav_bytes_to_datauri(wav)
-                render_normal_overlay(datauri=datauri, duration_ms=1400)
-                st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
+                        pred_s = rk4_predict_series(g2["Systolic"])
+                        pred_d = rk4_predict_series(g2["Diastolic"])
 
+                        g2["Prediksi_Systolic"] = np.nan
+                        g2["Prediksi_Diastolic"] = np.nan
+                        if pred_s is not None:
+                            g2.at[len(g2)-1, "Prediksi_Systolic"] = pred_s
+                            g2.at[len(g2)-1, "Prediksi_Diastolic"] = pred_d
+
+                        parts.append(g2)
+                        if g2["Anom_Total"].any():
+                            alert_needed = True
+                            alert_names.append(name)
+                    except Exception as e:
+                        processing_errors.append(f"{name}: error saat proses -> {e}")
+
+                if len(parts) == 0:
+                    st.warning("Tidak ada data pasien yang berhasil diproses. Periksa isi file (baris/kolom/format).")
+                else:
+                    result = pd.concat(parts, ignore_index=True)
+                    st.subheader("Hasil Analisis")
+                    st.dataframe(result)
+                    st.session_state.last_result = result
+                    st.session_state.last_context = {"mode":"Input","file":uploaded.name}
+
+                    if alert_needed:
+                        st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:8])}")
+                        render_warning_inline(duration_ms=1000)
+                    else:
+                        wav = generate_ting_wav(duration=0.45)
+                        datauri = wav_bytes_to_datauri(wav)
+                        render_normal_overlay(datauri=datauri, duration_ms=1400)
+                        st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
+
+                # tampilkan log error per-pasien bila ada
+                if processing_errors:
+                    st.markdown("**Catatan pemrosesan (beberapa entry dilewati / error):**")
+                    for msg in processing_errors:
+                        st.markdown(f"- {msg}")
+
+            except Exception as e:
+                st.error(f"Terjadi error saat analisis: {e}")
+                import traceback
+                st.text(traceback.format_exc())
+
+    # Back button
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
     st.stop()
