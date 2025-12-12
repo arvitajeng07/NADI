@@ -24,6 +24,11 @@ if "last_result" not in st.session_state:
     st.session_state.last_result = None
 if "last_context" not in st.session_state:
     st.session_state.last_context = None
+# State baru untuk mengontrol tampilan hasil setelah pop-up
+if "show_result_actions" not in st.session_state:
+     st.session_state.show_result_actions = False
+if "show_result_actions_personal" not in st.session_state:
+     st.session_state.show_result_actions_personal = False
 
 # -----------------------
 # GLOBAL CSS (app look)
@@ -63,6 +68,11 @@ st.markdown(
     button.bigglass:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 28px rgba(11,99,217,0.25);
+    }
+    /* Sembunyikan tombol trigger hack */
+    button[key*="btn_hack"] {
+        display: none !important;
+        visibility: hidden !important;
     }
     </style>
     """,
@@ -139,8 +149,9 @@ def detect_anomaly_df(df,
 
 # -----------------------
 # RENDER NORMAL — INLINE FULLSCREEN (overlay via st.markdown)
+# Tambahkan click_id untuk memicu rerun Streamlit
 # -----------------------
-def render_normal_overlay(datauri=None, duration_ms=1500):
+def render_normal_overlay(datauri=None, duration_ms=1500, click_id=""):
     import time
     uid = str(int(time.time() * 1000))
 
@@ -193,27 +204,37 @@ def render_normal_overlay(datauri=None, duration_ms=1500):
         100% {{ transform:scale(0.7); opacity:0; }}
     }}
     </style>
-
+    """
+    st.markdown(html, unsafe_allow_html=True)
+    
+    # SCRIPT HACK: Trigger tombol tersembunyi setelah durasi
+    script = f"""
     <script>
-        // jalankan fade-out setelah durasi
+        // Hapus pop-up setelah 500ms (agar tidak bocor saat Streamlit reruns)
         setTimeout(function() {{
             var el = document.getElementById("normal-root-{uid}");
-            if (el) {{
-                el.style.animation = "zoomFadeOut 0.6s ease forwards";
-                setTimeout(function() {{
-                    if (el && el.parentNode) el.remove();
-                }}, 600);
+            if (el && el.parentNode) {{
+                el.remove(); 
+            }}
+            
+            // Panggil tombol tersembunyi untuk memicu Streamlit rerun
+            if ("{click_id}") {{
+                var button = document.querySelector('[key="{click_id}"]');
+                if (button) {{
+                    button.click();
+                }}
             }}
         }}, {duration_ms});
     </script>
     """
+    st.markdown(script, unsafe_allow_html=True)
 
-    st.markdown(html, unsafe_allow_html=True)
 
 # -----------------------
 # RENDER WARNING — INLINE FULLSCREEN (super dramatic) + siren (1s)
+# Tambahkan click_id untuk memicu rerun Streamlit
 # -----------------------
-def render_warning_inline(duration_ms=1200):
+def render_warning_inline(duration_ms=1200, click_id=""):
     import time
     uid = str(int(time.time() * 1000))
     wav = generate_siren_wav(duration=1.0)
@@ -265,26 +286,40 @@ def render_warning_inline(duration_ms=1200):
         100% {{ transform:scale(0.6); opacity:0; }}
     }}
     </style>
+    """
+    st.markdown(html, unsafe_allow_html=True)
 
+    # SCRIPT HACK: Trigger tombol tersembunyi setelah durasi
+    script = f"""
     <script>
+        // Hapus pop-up setelah 500ms (agar tidak bocor saat Streamlit reruns)
         setTimeout(function() {{
             var el = document.getElementById("warn-root-{uid}");
-            if (el) {{
-                el.style.animation = "zoomFadeOut 0.65s ease forwards";
-                setTimeout(function() {{
-                    if (el && el.parentNode) el.remove();
-                }}, 650);
+            if (el && el.parentNode) {{
+                el.remove(); 
+            }}
+            
+            // Panggil tombol tersembunyi untuk memicu Streamlit rerun
+            if ("{click_id}") {{
+                var button = document.querySelector('[key="{click_id}"]');
+                if (button) {{
+                    button.click();
+                }}
             }}
         }}, {duration_ms});
     </script>
     """
+    st.markdown(script, unsafe_allow_html=True)
 
-    st.markdown(html, unsafe_allow_html=True)
 
 # ============================================================
 # BERANDA / LANDING
 # ============================================================
 if st.session_state.page == "beranda":
+    # Reset state hasil tampilan
+    st.session_state.show_result_actions = False
+    st.session_state.show_result_actions_personal = False
+
     st.markdown("<div class='big-nadi-title'>❤️ NADI : Numeric Analysis of Diastolic & Systolic</div>", unsafe_allow_html=True)
     st.markdown(
         "<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>"
@@ -300,6 +335,7 @@ if st.session_state.page == "beranda":
                     "<div class='spacer'></div>", unsafe_allow_html=True)
         if st.button("➡ Masuk ke Input Data", key="go_input"):
             st.session_state.page = "input"
+            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
     with c2:
@@ -308,22 +344,27 @@ if st.session_state.page == "beranda":
                     "<div class='spacer'></div>", unsafe_allow_html=True)
         if st.button("➡ Masuk ke Personal", key="go_personal"):
             st.session_state.page = "personal"
+            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
     a, b, c = st.columns(3)
     with a:
-        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=primary]\').click()">📊 Hasil Analisis Terakhir</button>', unsafe_allow_html=True)
-        if st.button("📊 Hasil Analisis Terakhir", key="btn_hasil", help="trigger"):
+        # st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[key=btn_hasil]\').click()">📊 Hasil Analisis Terakhir</button>', unsafe_allow_html=True)
+        if st.button("📊 Hasil Analisis Terakhir", key="btn_hasil"):
             st.session_state.page = "hasil"
+            st.rerun()
     with b:
-        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=secondary]\').click()">❔ Mengapa RK4?</button>', unsafe_allow_html=True)
-        if st.button("❔ Mengapa RK4?", key="btn_rk4", help="trigger"):
+        # st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[key=btn_rk4]\').click()">❔ Mengapa RK4?</button>', unsafe_allow_html=True)
+        if st.button("❔ Mengapa RK4?", key="btn_rk4"):
              st.session_state.page = "rk4info"
+             st.rerun()
     with c:
-        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=tertiary]\').click()">🔄 Reset Hasil</button>', unsafe_allow_html=True)
-        if st.button("🔄 Reset Hasil", key="btn_reset", help="trigger"):
+        # st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[key=btn_reset]\').click()">🔄 Reset Hasil</button>', unsafe_allow_html=True)
+        if st.button("🔄 Reset Hasil", key="btn_reset"):
              st.session_state.last_result = None
              st.session_state.last_context = None
+             st.session_state.show_result_actions = False
+             st.session_state.show_result_actions_personal = False
              st.success("Riwayat berhasil dibersihkan.")
 
 
@@ -346,17 +387,46 @@ if st.session_state.page == "beranda":
     st.stop()
 
 # ============================================================
-# INPUT DATA (UPLOAD) - REVISI (menggunakan st.form + debug)
+# INPUT DATA (UPLOAD) - REVISI (menggunakan st.form + perbaikan stop/rerun)
 # ============================================================
 if st.session_state.page == "input":
     st.header("📁 Analisis Data Populasi (Upload CSV / XLSX)")
+    
+    # Blok untuk menampilkan hasil setelah pop-up (RUN 2)
+    if st.session_state.get("show_result_actions", False):
+        st.subheader("Hasil Analisis")
+        df_show = st.session_state.last_result
+        st.dataframe(df_show)
 
-    # Form: file_uploader + submit dalam satu interaksi
+        # Tampilkan ringkasan anomali
+        if "Anom_Total" in df_show.columns:
+            alert_names = list(df_show[df_show['Anom_Total']]['Nama'].unique())
+            if alert_names:
+                st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:8])}")
+            else:
+                st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
+        
+        # tampilkan log error per-pasien bila ada (jika disimpan di session state)
+        if st.session_state.get('processing_errors'):
+            st.markdown("**Catatan pemrosesan (beberapa entry dilewati / error):**")
+            for msg in st.session_state['processing_errors']:
+                st.markdown(f"- {msg}")
+            del st.session_state['processing_errors'] # Bersihkan setelah ditampilkan
+
+        st.markdown("---")
+        if st.button("⬅ Kembali ke Beranda", key="back_from_input_result"):
+            st.session_state.page = "beranda"
+            st.session_state.show_result_actions = False # Reset state
+            st.rerun()
+            
+        st.stop() # Hentikan eksekusi di sini
+
+    # Form: file_uploader + submit dalam satu interaksi (RUN 1)
     with st.form("upload_form", clear_on_submit=False):
         uploaded = st.file_uploader("Upload CSV / XLSX (minimal kolom: Nama, Systolic, Diastolic)", type=["csv","xlsx"])
         submitted = st.form_submit_button("Analisis (RK4)")
 
-    # Quick debug info tentang file
+    df = None
     if uploaded is not None:
         st.info(f"File terdeteksi: **{uploaded.name}** — ukuran: {getattr(uploaded, 'size', 'n/a')} bytes")
         try:
@@ -366,30 +436,32 @@ if st.session_state.page == "input":
                 df = pd.read_excel(uploaded)
         except Exception as e:
             st.error(f"Gagal membaca file: {e}")
-            st.stop()
+            df = None
 
-        # Bersihkan nama kolom
-        df.columns = [c.strip() for c in df.columns]
-        st.info(f"Kolom terdeteksi: {list(df.columns)}")
-        st.dataframe(df.head(30))
+        if df is not None:
+            # Bersihkan nama kolom
+            df.columns = [c.strip() for c in df.columns]
+            st.info(f"Kolom terdeteksi: {list(df.columns)}")
+            st.dataframe(df.head(30))
 
-        required = {"Nama","Systolic","Diastolic"}
-        if not required.issubset(df.columns):
-            st.error(f"Kolom minimal harus ada: {sorted(required)}. Periksa header CSV (spasi / BOM / encoding).")
-            st.stop()
-
-        # handle tanggal
-        if "Tanggal" in df.columns:
-            df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
-            if df["Tanggal"].isna().any():
-                df["Tanggal"] = df["Tanggal"].fillna(method="ffill")
-        else:
-            today = datetime.now().date()
-            N = len(df)
-            df["Tanggal"] = [pd.Timestamp(today - timedelta(days=(N-1-i))) for i in range(N)]
+            required = {"Nama","Systolic","Diastolic"}
+            if not required.issubset(df.columns):
+                st.error(f"Kolom minimal harus ada: {sorted(required)}. Periksa header CSV (spasi / BOM / encoding).")
+                df = None
+            
+            # handle tanggal jika lolos validasi kolom
+            if df is not None:
+                if "Tanggal" in df.columns:
+                    df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
+                    if df["Tanggal"].isna().any():
+                        df["Tanggal"] = df["Tanggal"].fillna(method="ffill")
+                else:
+                    today = datetime.now().date()
+                    N = len(df)
+                    df["Tanggal"] = [pd.Timestamp(today - timedelta(days=(N-1-i))) for i in range(N)]
 
         # Jika user menekan Analisis
-        if submitted:
+        if submitted and df is not None:
             try:
                 parts = []
                 alert_needed = False
@@ -400,7 +472,6 @@ if st.session_state.page == "input":
                 df["Systolic"] = pd.to_numeric(df["Systolic"], errors="coerce")
                 df["Diastolic"] = pd.to_numeric(df["Diastolic"], errors="coerce")
 
-                # Tampilkan ringkasan sebelum loop
                 st.write(f"Memulai analisis untuk {df['Nama'].nunique()} pasien, total baris: {len(df)}")
 
                 for name, g in df.groupby("Nama", sort=False):
@@ -408,21 +479,20 @@ if st.session_state.page == "input":
                         g2 = g.sort_values("Tanggal").reset_index(drop=True)
                         g2 = g2[["Nama","Tanggal","Systolic","Diastolic"]].copy()
 
-                        # Jika semua nilai NaN untuk tensi -> lewati & catat
                         if g2["Systolic"].isna().all() and g2["Diastolic"].isna().all():
                             processing_errors.append(f"{name}: semua nilai Systolic/Diastolic kosong. Dilewati.")
                             continue
 
                         g2 = detect_anomaly_df(g2)
 
-                        pred_s = rk4_predict_series(g2["Systolic"])
-                        pred_d = rk4_predict_series(g2["Diastolic"])
+                        pred_s = rk4_predict_series(g2["Systolic"].dropna())
+                        pred_d = rk4_predict_series(g2["Diastolic"].dropna())
 
                         g2["Prediksi_Systolic"] = np.nan
                         g2["Prediksi_Diastolic"] = np.nan
-                        if pred_s is not None:
-                            g2.at[len(g2)-1, "Prediksi_Systolic"] = pred_s
-                            g2.at[len(g2)-1, "Prediksi_Diastolic"] = pred_d
+                        if pred_s is not None and not g2["Systolic"].empty:
+                            g2.at[g2.index[-1], "Prediksi_Systolic"] = pred_s
+                            g2.at[g2.index[-1], "Prediksi_Diastolic"] = pred_d
 
                         parts.append(g2)
                         if g2["Anom_Total"].any():
@@ -432,52 +502,89 @@ if st.session_state.page == "input":
                         processing_errors.append(f"{name}: error saat proses -> {e}")
 
                 if len(parts) == 0:
-                    st.warning("Tidak ada data pasien yang berhasil diproses. Periksa isi file (baris/kolom/format).")
+                    st.warning("Tidak ada data pasien yang berhasil diproses.")
                 else:
                     result = pd.concat(parts, ignore_index=True)
-                    st.subheader("Hasil Analisis")
-                    st.dataframe(result)
                     st.session_state.last_result = result
                     st.session_state.last_context = {"mode":"Input","file":uploaded.name}
+                    st.session_state.show_result_actions = True
+                    st.session_state.processing_errors = processing_errors # Simpan error log
 
+                    # Tampilkan pop-up dan panggil tombol tersembunyi "continue_input_btn_hack"
                     if alert_needed:
-                        st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:8])}")
-                        render_warning_inline(duration_ms=1000)
+                        # Durasi pop-up dipersingkat agar Streamlit cepat RERUN
+                        render_warning_inline(duration_ms=100, click_id="continue_input_btn_hack")
                     else:
                         wav = generate_ting_wav(duration=0.45)
                         datauri = wav_bytes_to_datauri(wav)
-                        render_normal_overlay(datauri=datauri, duration_ms=1400)
-                        st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
+                        # Durasi pop-up dipersingkat agar Streamlit cepat RERUN
+                        render_normal_overlay(datauri=datauri, duration_ms=100, click_id="continue_input_btn_hack")
+                    
+                    # Tombol tersembunyi yang akan dipicu oleh JavaScript
+                    if st.button("Lanjutkan Analisis Input", key="continue_input_btn_hack", help="Trigger", type="primary"):
+                        pass # Hanya perlu dipicu untuk RERUN
 
-                # tampilkan log error per-pasien bila ada
-                if processing_errors:
-                    st.markdown("**Catatan pemrosesan (beberapa entry dilewati / error):**")
-                    for msg in processing_errors:
-                        st.markdown(f"- {msg}")
-                
-                st.markdown("---")
-                if st.button("⬅ Kembali ke Beranda", key="back_from_input_result"): # Kunci diganti agar unik
-                    st.session_state.page = "beranda"
-                    st.rerun()
+                st.stop() # Hentikan eksekusi setelah analisis dan pemicu pop-up
 
             except Exception as e:
                 st.error(f"Terjadi error saat analisis: {e}")
                 import traceback
                 st.text(traceback.format_exc())
-            
-            # PENTING: Hentikan eksekusi setelah menampilkan hasil analisis!
-            st.stop() # <-- TAMBAHKAN INI
-
-    # Back button
+                st.stop()
+    
+    # Tombol Kembali ke Beranda (jika belum submit)
+    st.markdown("---")
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
-    st.stop() # <-- TAMBAHKAN INI AGAR KODE DI BAWAH TIDAK DILIHAT SEBELUMNYA
+        st.rerun()
+    st.stop()
+
 
 # ============================================================
 # PERSONAL ANALYSIS
 # ============================================================
 if st.session_state.page == "personal":
     st.header("👤 Analisis Personal")
+    
+    # Blok untuk menampilkan hasil setelah pop-up (RUN 2)
+    if st.session_state.get("show_result_actions_personal", False):
+        dfp = st.session_state.last_result
+        st.subheader("Hasil Analisis Personal")
+        st.dataframe(dfp)
+        
+        # Chart
+        fig, ax = plt.subplots(figsize=(9,3))
+        ax.plot(dfp["Tanggal"], dfp["Systolic"], marker="o", label="Systolic")
+        ax.plot(dfp["Tanggal"], dfp["Diastolic"], marker="o", label="Diastolic")
+        
+        pred_s = dfp["Prediksi_Systolic"].iloc[-1]
+        pred_d = dfp["Prediksi_Diastolic"].iloc[-1]
+
+        if not pd.isna(pred_s):
+            nd = dfp["Tanggal"].iloc[-1] + pd.Timedelta(days=1)
+            ax.scatter([nd],[pred_s], marker='D', s=80, color='red', label="Prediksi S")
+            ax.scatter([nd],[pred_d], marker='D', s=80, color='blue', label="Prediksi D")
+        ax.set_title(f"Tensi - {st.session_state.last_context.get('name', 'Personal')}")
+        ax.legend()
+        st.pyplot(fig)
+
+        if dfp["Anom_Total"].iloc[-1]:
+            st.error("⚠️ Terdeteksi hipertensi / hipotensi!")
+        else:
+            st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
+
+        if not pd.isna(pred_s):
+            st.markdown(f"**Prediksi RK4 (1 langkah)** — Sistolik: **{pred_s:.2f}**, Diastolik: **{pred_d:.2f}**")
+
+        st.markdown("---")
+        if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result"):
+             st.session_state.page = "beranda"
+             st.session_state.show_result_actions_personal = False # Reset state
+             st.rerun()
+        
+        st.stop() # Hentikan eksekusi di sini
+
+    # Bagian Input Data (RUN 1)
     st.write("Isi hingga 10 data tensi lalu klik Analisis (RK4).")
 
     name = st.text_input("Nama")
@@ -517,48 +624,31 @@ if st.session_state.page == "personal":
         if pred_s is not None:
             dfp.at[len(dfp)-1, "Prediksi_Systolic"] = pred_s
             dfp.at[len(dfp)-1, "Prediksi_Diastolic"] = pred_d
+            
+        st.session_state.last_result = dfp
+        st.session_state.last_context = {"mode":"Personal", "name":name}
+        st.session_state.show_result_actions_personal = True
 
-        st.subheader("Hasil Analisis Personal")
-        st.dataframe(dfp)
-
-        # Chart
-        fig, ax = plt.subplots(figsize=(9,3))
-        ax.plot(dfp["Tanggal"], dfp["Systolic"], marker="o", label="Systolic")
-        ax.plot(dfp["Tanggal"], dfp["Diastolic"], marker="o", label="Diastolic")
-        if pred_s is not None:
-            nd = dfp["Tanggal"].iloc[-1] + pd.Timedelta(days=1)
-            ax.scatter([nd],[pred_s], marker='D', s=80)
-            ax.scatter([nd],[pred_d], marker='D', s=80)
-        ax.set_title(f"Tensi - {name}")
-        ax.legend()
-        st.pyplot(fig)
-
-        # anomaly handling
+        # Tampilkan pop-up dan panggil tombol tersembunyi "continue_personal_btn_hack"
         if dfp["Anom_Total"].iloc[-1]:
-            st.error("⚠️ Terdeteksi hipertensi / hipotensi!")
-            render_warning_inline(duration_ms=1000)
+            render_warning_inline(duration_ms=100, click_id="continue_personal_btn_hack")
         else:
             wav = generate_ting_wav(duration=0.45)
             datauri = wav_bytes_to_datauri(wav)
-            render_normal_overlay(datauri=datauri, duration_ms=1400)
-            st.success("✔ Datamu Normal. Jaga Kesehatan Yaa!!!")
+            render_normal_overlay(datauri=datauri, duration_ms=100, click_id="continue_personal_btn_hack")
+            
+        # Tombol tersembunyi yang akan dipicu oleh JavaScript
+        if st.button("Lanjutkan Analisis Personal", key="continue_personal_btn_hack", help="Trigger", type="primary"):
+            pass
+            
+        st.stop() # Hentikan eksekusi setelah analisis dan pemicu pop-up
 
-        if pred_s is not None:
-            st.markdown(f"**Prediksi RK4 (1 langkah)** — Sistolik: **{pred_s:.2f}**, Diastolik: **{pred_d:.2f}**")
-
-        st.session_state.last_result = dfp
-        st.session_state.last_context = {"mode":"Personal", "name":name}
-
-        st.markdown("---")
-        if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result"):
-             st.session_state.page = "beranda"
-             st.rerun()
-        
-        st.stop() # <-- TAMBAHKAN INI
-
+    # Tombol Kembali ke Beranda (jika belum submit)
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
-    st.stop() # <-- TAMBAHKAN INI AGAR KODE DI BAWAH TIDAK DILIHAT SEBELUMNYA
+        st.rerun()
+    st.stop()
+
 # ============================================================
 # RESULTS (LAST)
 # ============================================================
@@ -575,6 +665,7 @@ if st.session_state.page == "hasil":
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
+        st.rerun()
     st.stop()
 
 # ============================================================
@@ -610,6 +701,7 @@ if st.session_state.page == "rk4info":
     """)
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
+        st.rerun()
     st.stop()
 
 # ============================================================
