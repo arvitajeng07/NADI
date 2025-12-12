@@ -456,7 +456,7 @@ if st.session_state.page == "input":
                         st.markdown(f"- {msg}")
                 
                 st.markdown("---")
-                if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result"):
+                if st.button("⬅ Kembali ke Beranda", key="back_from_input_result"): # Kunci diganti agar unik
                     st.session_state.page = "beranda"
                     st.rerun()
 
@@ -464,11 +464,14 @@ if st.session_state.page == "input":
                 st.error(f"Terjadi error saat analisis: {e}")
                 import traceback
                 st.text(traceback.format_exc())
+            
+            # PENTING: Hentikan eksekusi setelah menampilkan hasil analisis!
+            st.stop() # <-- TAMBAHKAN INI
 
     # Back button
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
-    st.stop()
+    st.stop() # <-- TAMBAHKAN INI AGAR KODE DI BAWAH TIDAK DILIHAT SEBELUMNYA
 
 # ============================================================
 # PERSONAL ANALYSIS
@@ -550,11 +553,12 @@ if st.session_state.page == "personal":
         if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result"):
              st.session_state.page = "beranda"
              st.rerun()
+        
+        st.stop() # <-- TAMBAHKAN INI
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
-    st.stop()
-
+    st.stop() # <-- TAMBAHKAN INI AGAR KODE DI BAWAH TIDAK DILIHAT SEBELUMNYA
 # ============================================================
 # RESULTS (LAST)
 # ============================================================
