@@ -1,7 +1,5 @@
-# app.py — NADI (RK4) — ULTRA-FLEXIBLE VERSION
 # ============================================================
-# Versi ini menambahkan autodetect_columns (Mode C - Ultra-Fleksible)
-# dan parsing format tensi gabungan seperti "120/80" dll.
+# NADI (RK4) — FINAL VERSION STABLE (Bagian 1/4)
 # ============================================================
 
 import streamlit as st
@@ -18,42 +16,43 @@ import os
 import re
 
 # ============================================================
-# PENGUNJUNG & ANALISIS TRACKING
+# STATISTIK PENGUNJUNG
 # ============================================================
 
-# stats file (visitor + analyses)
-STATS_PATH = "nadi_stats.json"
+STATS_FILE = "stats.txt"
 
-def load_stats():
-    default = {"visitors": 0, "analyses": 0}
-    try:
-        if os.path.exists(STATS_PATH):
-            with open(STATS_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        else:
-            return default
-    except Exception:
-        return default
+def init_stats():
+    if not os.path.exists(STATS_FILE):
+        with open(STATS_FILE, "w") as f:
+            f.write("visitors=0\nanalyses=0")
 
-def save_stats(stats):
-    try:
-        with open(STATS_PATH, "w", encoding="utf-8") as f:
-            json.dump(stats, f)
-    except Exception:
-        pass
+def read_stats():
+    with open(STATS_FILE, "r") as f:
+        data = f.read().splitlines()
+    stats = {}
+    for line in data:
+        key, value = line.split("=")
+        stats[key] = int(value)
+    return stats
 
-# increment visitor once when first load app in session
-if not st.session_state.get("visitor_counted"):
-    stats = load_stats()
-    stats["visitors"] = stats.get("visitors", 0) + 1
-    save_stats(stats)
-    st.session_state.visitor_counted = True
+def write_stats(stats):
+    with open(STATS_FILE, "w") as f:
+        for k, v in stats.items():
+            f.write(f"{k}={v}\n")
+
+init_stats()
+
+if "visitor_logged" not in st.session_state:
+    stats = read_stats()
+    stats["visitors"] += 1
+    write_stats(stats)
+    st.session_state.visitor_logged = True
 
 # ============================================================
-# PAGE CONFIG
+# STREAMLIT CONFIG
 # ============================================================
 
-st.set_page_config(page_title="NADI (RK4) — Soft Blue", layout="wide")
+st.set_page_config(page_title="NADI (RK4) — Stable Final", layout="wide")
 
 if "page" not in st.session_state:
     st.session_state.page = "beranda"
@@ -66,54 +65,63 @@ if "last_context" not in st.session_state:
 # GLOBAL CSS
 # ============================================================
 
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-    :root{ --bg1: #f3f9ff; --bg2: #eaf6ff; --primary-1: #0b63d9; --muted: #6b7280; }
-    html, body, [class*="css"] { font-family: Inter, "Times New Roman", serif; 
-        background: linear-gradient(180deg, var(--bg1), var(--bg2)); }
-    .big-nadi-title {
-        font-family: "Times New Roman", serif; font-size:70px; font-weight:800;
-        color:white !important; text-shadow:0 0 14px rgba(0,0,0,0.45);
-        text-align:center; margin-top:4px; margin-bottom:8px;
-    }
-    .nadi-desc {
-        text-align:center; color:var(--muted); max-width:920px; margin:auto;
-        margin-bottom:18px; font-size:16px; line-height:1.45;
-    }
-    .glass {
-        background: linear-gradient(180deg, rgba(255,255,255,0.9),
-                                    rgba(246,251,255,0.88));
-        border-radius:14px; padding:18px;
-        box-shadow:0 8px 28px rgba(11,99,217,0.06);
-        border:1px solid rgba(255,255,255,0.6);
-        transition: transform .18s ease, box-shadow .18s ease;
-    }
-    .glass:hover { transform: translateY(-6px); 
-        box-shadow:0 18px 40px rgba(11,99,217,0.09); }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: Inter, sans-serif;
+    background: linear-gradient(180deg, #f3f9ff, #eaf6ff);
+}
+
+.big-nadi-title {
+    font-size: 72px;
+    font-weight: 800;
+    color: white;
+    text-align: center;
+    margin-top: -10px;
+    text-shadow: 0 0 15px rgba(0,0,0,0.45);
+}
+
+.nadi-desc {
+    text-align:center;
+    color:#6b7280;
+    font-size:16px;
+    max-width:860px;
+    margin:auto;
+}
+
+.glass {
+    background: rgba(255,255,255,0.88);
+    border-radius:14px;
+    padding:18px;
+    border:1px solid rgba(255,255,255,0.6);
+    box-shadow:0 8px 28px rgba(11,99,217,0.08);
+    transition:0.2s;
+}
+.glass:hover {
+    transform: translateY(-6px);
+    box-shadow:0 20px 42px rgba(11,99,217,0.16);
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ============================================================
 # AUDIO HELPERS
 # ============================================================
 
-def generate_siren_wav(duration=2.0, sr=44100):
+def generate_siren_wav(duration=1.0, sr=44100):
     t = np.linspace(0, duration, int(sr*duration), endpoint=False)
     mod = 0.5 * (1 + np.sin(2*np.pi*2.2*t))
     freq = 700 + 600*np.sin(2*np.pi*1.0*t)
     tone = 0.9*np.sin(2*np.pi*freq*t) * (0.6 + 0.4*mod)
-    env = np.linspace(1,0.01,len(t))
-    tone *= env
+    tone *= np.linspace(1,0.01,len(t))
     buf = BytesIO()
     sf.write(buf, tone, sr, format="WAV")
     buf.seek(0)
     return buf.read()
 
-def generate_ting_wav(duration=1.0, sr=44100):
+def generate_ting_wav(duration=0.45, sr=44100):
     t = np.linspace(0, duration, int(sr*duration), endpoint=False)
     tone1 = 0.7*np.sin(2*np.pi*1400*t)*np.linspace(1,0,len(t))
     tone2 = 0.5*np.sin(2*np.pi*1800*t)*np.linspace(1,0,len(t))
@@ -124,8 +132,7 @@ def generate_ting_wav(duration=1.0, sr=44100):
     return buf.read()
 
 def wav_bytes_to_datauri(wav_bytes):
-    b64 = base64.b64encode(wav_bytes).decode()
-    return f"data:audio/wav;base64,{b64}"
+    return "data:audio/wav;base64," + base64.b64encode(wav_bytes).decode()
 
 # ============================================================
 # RK4
@@ -141,314 +148,239 @@ def rk4_predict_value(last, prev, h=1.0):
     return last + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
 
 def rk4_predict_series(arr):
-    arr = list(arr)
-    if len(arr) < 2:
-        return None
-    # make sure we ignore NaNs at end
     arr = [x for x in arr if not pd.isna(x)]
     if len(arr) < 2:
         return None
     return rk4_predict_value(arr[-1], arr[-2])
 
 # ============================================================
-# UTILITY: Parsing tensi dari string seperti "120/80" atau "120;80"
+# PARSER TENSI GABUNGAN (120/80, 120-80, 120 80)
 # ============================================================
 
 def parse_systolic_diastolic_from_cell(cell):
-    """
-    Jika cell adalah string yang mengandung pola 120/80, 120-80, 120 ; 80, atau '120 80' -> return (systolic, diastolic)
-    Jika tidak match -> return None
-    """
     if pd.isna(cell):
         return None
-    if isinstance(cell, (int, float, np.integer, np.floating)):
-        return None
     s = str(cell).strip()
-    # cari pola angka/angka
-    m = re.search(r'(\d{2,3})\s*[\/\-\;\,]\s*(\d{2,3})', s)
-    if m:
-        try:
-            s1 = int(m.group(1))
-            d1 = int(m.group(2))
-            return s1, d1
-        except:
-            return None
-    # kadang dipisah spasi: "120 80"
-    m2 = re.search(r'^\s*(\d{2,3})\s+(\d{2,3})\s*$', s)
-    if m2:
-        try:
-            return int(m2.group(1)), int(m2.group(2))
-        except:
-            return None
+
+    pat1 = re.search(r'(\d{2,3})\s*[\/\-\;\,]\s*(\d{2,3})', s)
+    if pat1:
+        return int(pat1.group(1)), int(pat1.group(2))
+
+    pat2 = re.search(r'^(\d{2,3})\s+(\d{2,3})$', s)
+    if pat2:
+        return int(pat2.group(1)), int(pat2.group(2))
+
     return None
 
 # ============================================================
-# AUTO-DETECT COLUMNS (MODE C: Ultra-Flexible)
+# AUTO-DETECT COLUMNS (ULTRA FLEX)
 # ============================================================
 
 def autodetect_columns(df):
-    """
-    Mode C (Ultra Fleksibel)
-    - Jika ada kolom gabungan berisi "120/80" -> parse jadi Systolic & Diastolic
-    - Deteksi nama kolom Nama, Systolic, Diastolic dari berbagai bahasa / singkatan
-    - Jika tidak ada nama -> buat 'Pasien 1..n'
-    - Jika tidak ada cukup kolom numerik -> raise ValueError
-    """
     df = df.copy()
-    # bersihkan header whitespace
     df.columns = [str(c).strip() for c in df.columns]
 
-    # buang baris kosong sepenuhnya
+    # Hapus baris kosong total
     df = df.dropna(how="all")
-    if df.shape[0] == 0:
-        raise ValueError("File kosong setelah membersihkan baris kosong.")
+    if df.empty:
+        raise ValueError("File kosong setelah pembersihan.")
 
-    # cek apakah ada kolom yang berisi pola "120/80" -> parse
-    parsed_any = False
+    # Deteksi kolom gabungan
+    parsed = False
     for c in df.columns:
-        sample_vals = df[c].dropna().astype(str).head(10).tolist()
-        # jika sebagian besar sample match pattern, parse seluruh kolom
-        matches = [1 for v in sample_vals if parse_systolic_diastolic_from_cell(v) is not None]
-        if len(sample_vals) > 0 and len(matches) >= max(1, len(sample_vals)//2):
-            # buat dua kolom baru
-            s_vals = []
-            d_vals = []
+        vals = df[c].dropna().astype(str).head(10).tolist()
+        matches = [1 for v in vals if parse_systolic_diastolic_from_cell(v)]
+        if len(matches) >= max(1, len(vals)//2):
+            s_list = []
+            d_list = []
             for v in df[c]:
-                parsed = parse_systolic_diastolic_from_cell(v)
-                if parsed is not None:
-                    s_vals.append(parsed[0])
-                    d_vals.append(parsed[1])
+                p = parse_systolic_diastolic_from_cell(v)
+                if p:
+                    s_list.append(p[0])
+                    d_list.append(p[1])
                 else:
-                    s_vals.append(np.nan)
-                    d_vals.append(np.nan)
-            df[f"{c}_Systolic"] = s_vals
-            df[f"{c}_Diastolic"] = d_vals
-            parsed_any = True
+                    s_list.append(np.nan)
+                    d_list.append(np.nan)
+            df[c + "_Systolic"] = s_list
+            df[c + "_Diastolic"] = d_list
+            parsed = True
 
-    # normalize lower-case mapping
-    cols_map = {c.lower(): c for c in df.columns}
+    cols = {c.lower(): c for c in df.columns}
 
-    name_keys = ["nama", "name", "pasien", "patient", "id", "orang", "user"]
-    sys_keys  = ["sys","systolic","sistolik","sistole","atas","upper","sistolic","sistol"]
-    dia_keys  = ["dia","diastolic","diastolik","bawah","lower","dias","distolic","diastole"]
+    name_keys = ["nama","name","pasien","patient","user","id"]
+    sys_keys  = ["sys","systolic","sistolik","sistole","atas","upper"]
+    dia_keys  = ["dia","diastolic","diastolik","bawah","lower"]
 
-    # find name column
+    # Nama
     name_col = None
     for k in name_keys:
-        for lower, orig in cols_map.items():
-            if k in lower:
+        for low, orig in cols.items():
+            if k in low:
                 name_col = orig
                 break
         if name_col:
             break
 
-    # find systolic
+    # Systolic
     sys_col = None
     for k in sys_keys:
-        for lower, orig in cols_map.items():
-            if k in lower and "systolic" in orig.lower() or k in lower and re.search(r'\b%s\b' % re.escape(k), lower):
+        for low, orig in cols.items():
+            if k in low:
                 sys_col = orig
                 break
         if sys_col:
             break
 
-    # alternative: direct contains
-    if sys_col is None:
-        for lower, orig in cols_map.items():
-            for k in sys_keys:
-                if k in lower:
-                    sys_col = orig
-                    break
-            if sys_col:
-                break
-
-    # find diastolic
+    # Diastolic
     dia_col = None
     for k in dia_keys:
-        for lower, orig in cols_map.items():
-            if k in lower and "diastolic" in orig.lower() or k in lower and re.search(r'\b%s\b' % re.escape(k), lower):
+        for low, orig in cols.items():
+            if k in low:
                 dia_col = orig
                 break
         if dia_col:
             break
 
-    if dia_col is None:
-        for lower, orig in cols_map.items():
-            for k in dia_keys:
-                if k in lower:
-                    dia_col = orig
-                    break
-            if dia_col:
-                break
+    # Kolom hasil parsing gabungan
+    if not sys_col:
+        cand = [c for c in df.columns if c.lower().endswith("_systolic")]
+        if cand:
+            sys_col = cand[0]
+    if not dia_col:
+        cand = [c for c in df.columns if c.lower().endswith("_diastolic")]
+        if cand:
+            dia_col = cand[0]
 
-    # If parsing produced explicit *_Systolic and *_Diastolic, prefer them
-    systolic_candidates = [c for c in df.columns if c.lower().endswith("_systolic") or c.lower() == "systolic"]
-    diastolic_candidates = [c for c in df.columns if c.lower().endswith("_diastolic") or c.lower() == "diastolic"]
+    # Jika masih belum ketemu → ambil kolom numerik
+    if not sys_col or not dia_col:
+        def is_num(s):
+            try:
+                pd.to_numeric(s.dropna().head(5))
+                return True
+            except:
+                return False
 
-    if systolic_candidates and not sys_col:
-        sys_col = systolic_candidates[0]
-    if diastolic_candidates and not dia_col:
-        dia_col = diastolic_candidates[0]
+        nums = [c for c in df.columns if is_num(df[c])]
 
-    # If still not found, find numeric columns
-    def is_numeric_series(s):
-        try:
-            pd.to_numeric(s.dropna().head(20))
-            return True
-        except:
-            return False
+        if len(nums) < 2:
+            raise ValueError("Tidak cukup kolom tensi ditemukan.")
 
-    if sys_col is None or dia_col is None:
-        numeric_cols = []
-        for c in df.columns:
-            if is_numeric_series(df[c]):
-                numeric_cols.append(c)
-        # remove name if accidentally numeric and used as id
-        if name_col in numeric_cols:
-            numeric_cols = [c for c in numeric_cols if c != name_col]
+        if not sys_col:
+            sys_col = nums[0]
+        if not dia_col:
+            dia_col = nums[1]
 
-        # If there are at least two numeric columns, pick two with highest variance (or first two)
-        if len(numeric_cols) >= 2:
-            # prefer columns with 'sys' or 'dia' in name
-            if sys_col is None:
-                for c in numeric_cols:
-                    if any(k in c.lower() for k in sys_keys):
-                        sys_col = c
-                        break
-            if dia_col is None:
-                for c in numeric_cols:
-                    if any(k in c.lower() for k in dia_keys):
-                        dia_col = c
-                        break
-
-            if sys_col is None or dia_col is None:
-                # choose two numeric columns sorted by variance (likely systolic more variable)
-                variances = [(c, np.nanvar(pd.to_numeric(df[c], errors='coerce').astype(float).dropna())) for c in numeric_cols]
-                variances = sorted(variances, key=lambda x: - (x[1] if not np.isnan(x[1]) else 0))
-                if len(variances) >= 2:
-                    if sys_col is None:
-                        sys_col = variances[0][0]
-                    if dia_col is None:
-                        dia_col = variances[1][0]
-
-    # If still missing, raise
-    if sys_col is None or dia_col is None:
-        raise ValueError("Tidak ditemukan dua kolom numerik yang jelas untuk Systolic & Diastolic. Coba upload file dengan setidaknya dua kolom angka atau kolom dengan format '120/80'.")
-
-    # Ensure name column exists
-    if name_col is None:
+    # Jika tidak ada nama → buat
+    if not name_col:
         df["Nama"] = [f"Pasien {i+1}" for i in range(len(df))]
         name_col = "Nama"
 
-    # Convert and rename
     df[sys_col] = pd.to_numeric(df[sys_col], errors="coerce")
     df[dia_col] = pd.to_numeric(df[dia_col], errors="coerce")
 
-    # drop rows where both systolic & diastolic are NaN (no useful info)
-    df = df.dropna(subset=[sys_col, dia_col], how="all").reset_index(drop=True)
+    df = df.dropna(subset=[sys_col, dia_col], how="all")
 
-    df = df.rename(columns={sys_col: "Systolic", dia_col: "Diastolic", name_col: "Nama"})
-
-    # Final: ensure Systolic/Diastolic exist
-    if "Systolic" not in df.columns or "Diastolic" not in df.columns:
-        raise ValueError("Gagal mengidentifikasi kolom Systolic / Diastolic setelah proses parsing.")
-
-    return df
-
+    return df.rename(columns={
+        name_col: "Nama",
+        sys_col: "Systolic",
+        dia_col: "Diastolic"
+    })
 # ============================================================
 # DETEKSI ANOMALI
 # ============================================================
 
 def detect_anomaly_df(df,
-                      thresh_sys_high=140,
-                      thresh_dia_high=90,
-                      thresh_sys_low=90,
-                      thresh_dia_low=60):
+    thresh_sys_high=140,
+    thresh_dia_high=90,
+    thresh_sys_low=90,
+    thresh_dia_low=60
+):
     df = df.copy()
-    df["Systolic"] = pd.to_numeric(df["Systolic"], errors="coerce")
-    df["Diastolic"] = pd.to_numeric(df["Diastolic"], errors="coerce")
-
     df["Hipertensi"] = (df["Systolic"] > thresh_sys_high) | (df["Diastolic"] > thresh_dia_high)
     df["Hipotensi"]  = (df["Systolic"] < thresh_sys_low)  | (df["Diastolic"] < thresh_dia_low)
     df["Anom_Total"] = df["Hipertensi"] | df["Hipotensi"]
     return df
 
 # ============================================================
-# POP-UP NORMAL (WITH CLOSE BUTTON)
+# POP-UP NORMAL (HIJAU) — aman f-string
 # ============================================================
 
-def render_normal_overlay(datauri=None, duration_ms=1800):
-    audio_html = ""
-    if datauri:
-        audio_html = f'<audio autoplay><source src="{datauri}" type="audio/wav"></audio>'
+def render_normal_overlay(duration_ms=2000):
+    wav = generate_ting_wav(0.45)
+    datauri = wav_bytes_to_datauri(wav)
 
     html = f"""
-    <div id="normal-root" style="
-        position:fixed; inset:0; z-index:999999;
-        background:rgba(0,0,0,0.45); backdrop-filter:blur(7px);
-        display:flex; justify-content:center; align-items:center;
-    ">
+<div id="normal-root" style="
+    position:fixed; inset:0; z-index:999999;
+    background:rgba(0,0,0,0.45); backdrop-filter:blur(8px);
+    display:flex; justify-content:center; align-items:center;
+">
 
-      <div style="
-            width:520px; padding:32px;
-            background:linear-gradient(135deg,#00e09f,#00b46f);
-            border-radius:30px; text-align:center; color:white;
-            box-shadow:0 40px 80px rgba(0,50,20,0.4);
-            position:relative; animation:pop .35s ease;
-      ">
+  <div style="
+        width:500px; padding:32px;
+        background:linear-gradient(135deg,#00d68f,#00aa6a);
+        border-radius:28px; text-align:center; color:white;
+        box-shadow:0 28px 60px rgba(0,80,40,0.45);
+        position:relative; animation:popGreen .5s ease;
+  ">
 
-        <!-- Tombol Close -->
-        <div onclick="document.getElementById('normal-root').remove();" 
-             style="
-             position:absolute; top:10px; right:16px;
-             background:rgba(255,255,255,0.25);
-             border-radius:50%; width:34px; height:34px;
-             display:flex; justify-content:center; align-items:center;
-             font-size:20px; cursor:pointer; font-weight:700;
-             backdrop-filter:blur(4px);">✖</div>
+    <div onclick="document.getElementById('normal-root').remove();"
+         style="
+         position:absolute; top:10px; right:15px;
+         background:rgba(255,255,255,0.25);
+         border-radius:50%; width:34px; height:34px;
+         display:flex; justify-content:center; align-items:center;
+         cursor:pointer; font-size:18px; font-weight:700;">✖</div>
 
-        <div style="font-size:90px; margin-bottom:10px;
-             animation:pulse 1.3s infinite;
-             filter:drop-shadow(0 0 22px rgba(0,255,180,0.9));">✔️</div>
+    <div style="
+         font-size:88px;
+         filter:drop-shadow(0 0 20px rgba(0,255,160,0.95));
+         animation:glowGreen 1.3s infinite alternate;
+    ">✔️</div>
 
-        <h2 style="margin:0; font-size:36px; font-weight:900;">Datamu Normal!</h2>
-        <p style="font-size:20px; opacity:.95; margin-top:8px;">
-            Jaga kesehatan yaaa!! 💚✨
-        </p>
-      </div>
+    <h1 style="margin:0; font-size:38px; font-weight:900;">
+        Datamu Normal!
+    </h1>
 
-      {audio_html}
-    </div>
+    <p style="font-size:18px; opacity:0.95; margin-top:6px;">
+        Jaga kesehatanmu selalu! 💚✨
+    </p>
 
-    <style>
-    @keyframes pop {{
-        0% {{ transform:scale(.4); opacity:0; }}
-        60% {{ transform:scale(1.12); opacity:1; }}
-        100% {{ transform:scale(1); opacity:1; }}
-    }}
-    @keyframes pulse {{
-        0% {{ transform:scale(1); }}
-        50% {{ transform:scale(1.22); }}
-        100% {{ transform:scale(1); }}
-    }}
-    </style>
+  </div>
 
-    <script>
-    setTimeout(function(){{
-        var el = document.getElementById('normal-root');
-        if(el) el.remove();
-    }}, {duration_ms});
-    </script>
-    """
+  <audio autoplay>
+    <source src="{datauri}" type="audio/wav">
+  </audio>
 
+</div>
+
+<style>
+@keyframes popGreen {{
+    0% {{ transform:scale(.4); opacity:0; }}
+    60% {{ transform:scale(1.12); opacity:1; }}
+    100% {{ transform:scale(1); opacity:1; }}
+}}
+
+@keyframes glowGreen {{
+    from {{ filter:drop-shadow(0 0 12px rgba(0,255,160,0.65)); }}
+    to   {{ filter:drop-shadow(0 0 28px rgba(0,255,160,1)); }}
+}}
+</style>
+
+<script>
+setTimeout(function(){{
+    var el = document.getElementById('normal-root');
+    if(el) el.remove();
+}}, {duration_ms});
+</script>
+"""
     st.markdown(html, unsafe_allow_html=True)
 
-
 # ============================================================
-# POP-UP WARNING (WITH CLOSE)
+# POP-UP WARNING (MERAH) — aman f-string
 # ============================================================
 
-def render_warning_inline(duration_ms=1600):
+def render_warning_inline(duration_ms=2200):
     wav = generate_siren_wav(1.0)
     datauri = wav_bytes_to_datauri(wav)
 
@@ -463,25 +395,24 @@ def render_warning_inline(duration_ms=1600):
         width:620px; background:linear-gradient(135deg,#ff2d2d,#8b0000);
         border-radius:30px; padding:40px 32px; text-align:center;
         color:white; box-shadow:0 40px 120px rgba(255,0,0,0.45);
-        position:relative; animation:popWarn .8s ease;
+        position:relative; animation:popWarn .6s ease;
   ">
 
     <div onclick="document.getElementById('warn-root').remove();" 
          style="
          position:absolute; top:10px; right:16px;
-         background:rgba(255,255,255,0.25);
+         background:rgba(255,255,255,0.22);
          border-radius:50%; width:34px; height:34px;
          display:flex; justify-content:center; align-items:center;
-         font-size:20px; cursor:pointer; font-weight:700;
-         backdrop-filter:blur(4px);">✖</div>
+         font-size:20px; cursor:pointer; font-weight:700;">✖</div>
 
     <div style="
          font-size:108px;
-         filter:drop-shadow(0 0 28px rgba(255,0,0,1));
+         filter:drop-shadow(0 0 32px rgba(255,0,0,1));
          animation:glowWarn .5s infinite alternate;
     ">🚨</div>
 
-    <h1 style="margin:0; font-size:40px; font-weight:900;">
+    <h1 style="margin:0; font-size:42px; font-weight:900;">
         PERINGATAN TENSI TIDAK NORMAL!
     </h1>
 
@@ -491,31 +422,33 @@ def render_warning_inline(duration_ms=1600):
 
   </div>
 
-  <audio autoplay><source src="{datauri}" type="audio/wav"></audio>
+  <audio autoplay>
+    <source src="{datauri}" type="audio/wav">
+  </audio>
 
 </div>
 
 <style>
-@keyframes popWarn {
-    0%   { transform:scale(.4); opacity:0; }
-    60%  { transform:scale(1.12); opacity:1; }
-    100% { transform:scale(1); opacity:1; }
-}
-@keyframes glowWarn {
-    from { filter:drop-shadow(0 0 18px rgba(255,90,90,0.85)); }
-    to   { filter:drop-shadow(0 0 38px rgba(255,0,0,1)); }
-}
+@keyframes popWarn {{
+    0%   {{ transform:scale(.4); opacity:0; }}
+    60%  {{ transform:scale(1.12); opacity:1; }}
+    100% {{ transform:scale(1); opacity:1; }}
+}}
+
+@keyframes glowWarn {{
+    from {{ filter:drop-shadow(0 0 20px rgba(255,90,90,0.85)); }}
+    to   {{ filter:drop-shadow(0 0 42px rgba(255,0,0,1)); }}
+}}
 </style>
 
 <script>
-setTimeout(function(){
+setTimeout(function(){{
     var el = document.getElementById('warn-root');
     if(el) el.remove();
-}, {duration_ms});
+}}, {duration_ms});
 </script>
 """
     st.markdown(html, unsafe_allow_html=True)
-
 
 # ============================================================
 # BERANDA / LANDING PAGE
@@ -523,114 +456,91 @@ setTimeout(function(){
 
 if st.session_state.page == "beranda":
 
-    st.markdown("<div class='big-nadi-title'>❤️ NADI : Numeric Analysis of Diastolic & Systolic</div>", unsafe_allow_html=True)
+     st.markdown("<div class='big-nadi-title'>❤️ NADI : Numeric Analysis of Diastolic & Systolic</div>", unsafe_allow_html=True)
     st.markdown(
         "<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>"
         "Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>"
         "<b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>",
-        unsafe_allow_html=True
-    )
+        unsafe_allow_html=True)
 
-    # CARD NAVIGASI
-    c1, c2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-    with c1:
-        st.markdown("<div class='glass'><h3 style='color:var(--primary-1)'>Input Data Populasi</h3>"
-                    "<p style='color:var(--muted)'>Upload CSV/XLSX banyak pasien → sistem mendeteksi anomali & prediksi RK4 tiap pasien.</p>"
-                    "</div>", unsafe_allow_html=True)
+    with col1:
+        st.markdown("""
+        <div class="glass">
+            <h3 style="color:#0b63d9;">Input Data Populasi</h3>
+            <p style="color:#6b7280;">Upload CSV/XLSX, auto-detect tensi, prediksi RK4.</p>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button("➡ Masuk ke Input Data"):
             st.session_state.page = "input"
 
-    with c2:
-        st.markdown("<div class='glass'><h3 style='color:var(--primary-1)'>Analisis Personal</h3>"
-                    "<p style='color:var(--muted)'>Isi 1–10 data tensi untuk prediksi pribadi.</p>"
-                    "</div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div class="glass">
+            <h3 style="color:#0b63d9;">Analisis Personal</h3>
+            <p style="color:#6b7280;">Masukkan data tensi pribadi (1–10 titik).</p>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button("➡ Masuk ke Personal"):
             st.session_state.page = "personal"
-    # beranda nav buttons (clean)
-    st.markdown("<br>", unsafe_allow_html=True)
-    nav1, nav2, nav3 = st.columns(3)
-    with nav1:
-        if st.button("📊 Hasil Analisis Terakhir"):
-            st.session_state.page = "hasil"
-    with nav2:
-        if st.button("❔ Mengapa RK4?"):
-            st.session_state.page = "rk4info"
-    with nav3:
-        if st.button("🔄 Reset"):
-            st.session_state.last_result = None
-            st.session_state.last_context = None
-            st.success("Riwayat berhasil direset!")
-
-    # visitor / analyses stats
-    stats = load_stats()
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("👥 Total Pengunjung (sesi)", stats.get("visitors", 0))
-    with col2:
-        st.metric("📊 Total Analisis", stats.get("analyses", 0))
 
     st.markdown("---")
 
-    # ============================================================
-    # STATISTIK PENGGUNAAN WEBSITE
-    # ============================================================
-
     stats = read_stats()
-
     st.markdown(f"""
     <div style='padding:14px; background:white; border-radius:14px;
-                box-shadow:0 6px 18px rgba(0,0,0,0.06); text-align:center;'>
-        <h4 style="margin:0; color:#0b63d9;">📊 Statistik Penggunaan</h4>
-        <br>
+                 box-shadow:0 6px 18px rgba(0,0,0,0.06); text-align:center;'>
+        <h4 style="margin:0; color:#0b63d9;">📊 Statistik Penggunaan</h4><br>
         <b>Pengunjung Unik:</b> {stats["visitors"]}<br>
-        <b>Total Analisis Dilakukan:</b> {stats["analyses"]}
+        <b>Total Analisis:</b> {stats["analyses"]}
     </div>
     """, unsafe_allow_html=True)
 
-    # ============================================================
-    # TEMPLATE DATA (dihapus - tidak wajib lagi)
-    # ============================================================
-
-    st.write("Upload file CSV/XLSX tanpa harus mengikuti template kolom — NADI akan mencoba menyesuaikan secara otomatis.")
-
     st.stop()
-
-
 # ============================================================
 # INPUT DATA (UPLOAD CSV/XLSX)
 # ============================================================
 
 if st.session_state.page == "input":
+
     st.header("📁 Analisis Data Populasi (Upload CSV / XLSX)")
 
-    uploaded = st.file_uploader("Upload CSV/XLSX (cukup berisi kolom angka atau kolom '120/80')", type=["csv","xlsx"])
+    uploaded = st.file_uploader(
+        "Upload file CSV/XLSX (auto-detect tensi & nama)",
+        type=["csv", "xlsx"]
+    )
+
     run = st.button("Analisis (RK4)")
 
     if uploaded is not None:
+        # ------------------------------
+        # Load file
+        # ------------------------------
         try:
             if uploaded.name.lower().endswith(".csv"):
-                df = pd.read_csv(uploaded)
+                df_raw = pd.read_csv(uploaded)
             else:
-                df = pd.read_excel(uploaded)
+                df_raw = pd.read_excel(uploaded)
         except Exception as e:
             st.error(f"Gagal membaca file: {e}")
             st.stop()
 
-        # strip whitespace column names
-        df.columns = [str(c).strip() for c in df.columns]
-
         st.info("Preview 20 baris pertama:")
-        st.dataframe(df.head(20))
+        st.dataframe(df_raw.head(20))
 
-        # AUTO-DETECT kolom (Mode C)
+        # ------------------------------
+        # AUTO-DETECT & CLEANING
+        # ------------------------------
         try:
-            df = autodetect_columns(df)
+            df = autodetect_columns(df_raw)
         except Exception as e:
-            st.error(f"Gagal mendeteksi kolom: {e}")
+            st.error(f"Gagal mendeteksi kolom tensi: {e}")
             st.stop()
 
-        # handle tanggal
+        # ------------------------------
+        # Kolom Tanggal
+        # ------------------------------
         if "Tanggal" in df.columns:
             df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
             df["Tanggal"] = df["Tanggal"].fillna(method="ffill")
@@ -639,14 +549,17 @@ if st.session_state.page == "input":
             N = len(df)
             df["Tanggal"] = [pd.Timestamp(today - timedelta(days=(N-1-i))) for i in range(N)]
 
+        # ======================================================
+        # RUN ANALYSIS
+        # ======================================================
         if run:
-            parts = []
+
+            all_parts = []
             alert_needed = False
-            alert_names = []
+            alert_list = []
 
             for name, g in df.groupby("Nama", sort=False):
                 g2 = g.sort_values("Tanggal").reset_index(drop=True)
-                g2 = g2[["Nama","Tanggal","Systolic","Diastolic"]].copy()
                 g2 = detect_anomaly_df(g2)
 
                 pred_s = rk4_predict_series(g2["Systolic"])
@@ -657,32 +570,45 @@ if st.session_state.page == "input":
 
                 if pred_s is not None:
                     g2.at[len(g2)-1, "Prediksi_Systolic"] = pred_s
-                    g2.at[len(g2)-1, "Prediksi_Diastolic"] = pred_d
+                    g2.at[len(g2)-1, "Prediksi_Diastolic"]  = pred_d
 
-                parts.append(g2)
+                all_parts.append(g2)
+
                 if g2["Anom_Total"].any():
                     alert_needed = True
-                    alert_names.append(name)
+                    alert_list.append(name)
 
-            if parts:
-                result = pd.concat(parts, ignore_index=True)
-            else:
-                result = pd.DataFrame(columns=["Nama","Tanggal","Systolic","Diastolic","Prediksi_Systolic","Prediksi_Diastolic","Hipertensi","Hipotensi","Anom_Total"])
-
+            result = pd.concat(all_parts, ignore_index=True)
+            
             st.subheader("Hasil Analisis")
             st.dataframe(result)
 
+            # ======================================================
+            # Simpan hasil untuk halaman "Hasil Terakhir"
+            # ======================================================
             st.session_state.last_result = result
-            st.session_state.last_context = {"mode":"Input", "file":uploaded.name}
+            st.session_state.last_context = {
+                "mode": "Input",
+                "file": uploaded.name
+            }
 
-            # Simpan stats analisis
+            # ======================================================
+            # Update statistik
+            # ======================================================
             stats = read_stats()
             stats["analyses"] += 1
             write_stats(stats)
 
-            # Tombol download CSV & XLSX
-            csv = result.to_csv(index=False).encode("utf-8")
-            st.download_button("Download hasil (CSV)", csv, f"hasil_nadi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", "text/csv")
+            # ======================================================
+            # DOWNLOAD BUTTONS
+            # ======================================================
+            csv_bytes = result.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Download hasil (CSV)", 
+                csv_bytes,
+                f"hasil_nadi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                "text/csv"
+            )
 
             try:
                 out = BytesIO()
@@ -690,25 +616,29 @@ if st.session_state.page == "input":
                     result.to_excel(writer, index=False, sheet_name="Hasil")
                     writer.save()
                 out.seek(0)
-                st.download_button("Download hasil (XLSX)", out, f"hasil_nadi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            except Exception:
+                st.download_button(
+                    "Download hasil (XLSX)", 
+                    out,
+                    f"hasil_nadi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            except:
                 pass
 
+            # ======================================================
+            # POPUP
+            # ======================================================
             if alert_needed:
-                st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:8])}")
+                st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_list[:5])}")
                 render_warning_inline()
             else:
-                wav = generate_ting_wav(0.45)
-                datauri = wav_bytes_to_datauri(wav)
-                render_normal_overlay(datauri=datauri)
-
-                st.success("✔ Tidak ada hipertensi/hipotensi terdeteksi.")
+                st.success("✔ Tidak ada tensi abnormal.")
+                render_normal_overlay()
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
 
     st.stop()
-
 # ============================================================
 # PERSONAL ANALYSIS
 # ============================================================
@@ -725,12 +655,10 @@ if st.session_state.page == "personal":
 
     for i in range(int(n)):
         c1, c2 = st.columns(2)
-
         with c1:
             s = st.number_input(f"Sistolik #{i+1}", min_value=40, max_value=250, value=120, key=f"s_{i}")
         with c2:
             d = st.number_input(f"Diastolik #{i+1}", min_value=20, max_value=180, value=80, key=f"d_{i}")
-
         systolic.append(s)
         diastolic.append(d)
 
@@ -782,10 +710,7 @@ if st.session_state.page == "personal":
             st.error("⚠️ Terdeteksi hipertensi / hipotensi!")
             render_warning_inline()
         else:
-            wav = generate_ting_wav(0.45)
-            datauri = wav_bytes_to_datauri(wav)
-            render_normal_overlay(datauri=datauri)
-
+            render_normal_overlay()
             st.success("✔ Datamu Normal. Jaga kesehatan yaaa!!")
 
         if pred_s is not None:
@@ -804,7 +729,6 @@ if st.session_state.page == "personal":
         st.session_state.page = "beranda"
 
     st.stop()
-
 
 # ============================================================
 # RESULTS (LAST)
@@ -825,11 +749,17 @@ if st.session_state.page == "hasil":
             total_anom = int(df_show["Anom_Total"].sum())
             st.markdown(f"**Total hipertensi/hipotensi terdeteksi: {total_anom}**")
 
+        # additional quick metrics
+        if "Prediksi_Systolic" in df_show.columns:
+            preds = df_show[["Nama","Prediksi_Systolic","Prediksi_Diastolic"]].dropna(how="all")
+            if not preds.empty:
+                st.markdown("**Prediksi berikutnya (ringkasan):**")
+                st.dataframe(preds.head(10))
+
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
 
     st.stop()
-
 
 # ============================================================
 # WHY RK4 PAGE
@@ -869,14 +799,13 @@ if st.session_state.page == "rk4info":
 
     st.stop()
 
-
 # ============================================================
 # FOOTER
 # ============================================================
 
 st.markdown("---")
 st.markdown(
-    "<div style='color:var(--muted); font-size:13px;'>"
+    "<div style='color:#6b7280; font-size:13px;'>"
     "NADI | RK4 — aplikasi edukasi numerik, bukan pengganti konsultasi medis."
     "</div>",
     unsafe_allow_html=True
