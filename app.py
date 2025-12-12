@@ -451,53 +451,74 @@ setTimeout(function(){{
     st.markdown(html, unsafe_allow_html=True)
 
 # ============================================================
-# BERANDA / LANDING PAGE
+# BERANDA / LANDING PAGE (FIXED INDENTATION)
 # ============================================================
 
 if st.session_state.page == "beranda":
-   st.markdown("<div class='big-nadi-title'>❤️ NADI : Numeric Analysis of Diastolic & Systolic</div>", unsafe_allow_html=True)
-   st.markdown(
-        "<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>"
-        "Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>"
-        "<b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>",
+
+    st.markdown(
+        "<div class='big-nadi-title'>❤️ NADI : Numeric Analysis of Diastolic & Systolic</div>",
         unsafe_allow_html=True
-   )
+    )
+
+    st.markdown(
+        "<div class='nadi-desc'>"
+        "<b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>"
+        "Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, "
+        "<b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>"
+        "<b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, "
+        "bukan pengganti konsultasi tenaga kesehatan profesional.<br><br>"
+        "<i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i>"
+        "</div>",
+        unsafe_allow_html=True
+    )
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("""
-        <div class="glass">
-            <h3 style="color:#0b63d9;">Input Data Populasi</h3>
-            <p style="color:#6b7280;">Upload CSV/XLSX, auto-detect tensi, prediksi RK4.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div class="glass">
+                <h3 style="color:#0b63d9;">Input Data Populasi</h3>
+                <p style="color:#6b7280;">Upload CSV/XLSX, auto-detect tensi, prediksi RK4.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         if st.button("➡ Masuk ke Input Data"):
             st.session_state.page = "input"
 
     with col2:
-        st.markdown("""
-        <div class="glass">
-            <h3 style="color:#0b63d9;">Analisis Personal</h3>
-            <p style="color:#6b7280;">Masukkan data tensi pribadi (1–10 titik).</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div class="glass">
+                <h3 style="color:#0b63d9;">Analisis Personal</h3>
+                <p style="color:#6b7280;">Masukkan data tensi pribadi (1–10 titik).</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         if st.button("➡ Masuk ke Personal"):
             st.session_state.page = "personal"
 
     st.markdown("---")
 
     stats = read_stats()
-    st.markdown(f"""
-    <div style='padding:14px; background:white; border-radius:14px;
-                 box-shadow:0 6px 18px rgba(0,0,0,0.06); text-align:center;'>
-        <h4 style="margin:0; color:#0b63d9;">📊 Statistik Penggunaan</h4><br>
-        <b>Pengunjung Unik:</b> {stats["visitors"]}<br>
-        <b>Total Analisis:</b> {stats["analyses"]}
-    </div>
-    """, unsafe_allow_html=True)
+    
+    st.markdown(
+        f"""
+        <div style='padding:14px; background:white; border-radius:14px;
+                    box-shadow:0 6px 18px rgba(0,0,0,0.06); text-align:center;'>
+            <h4 style="margin:0; color:#0b63d9;">📊 Statistik Penggunaan</h4><br>
+            <b>Pengunjung Unik:</b> {stats["visitors"]}<br>
+            <b>Total Analisis:</b> {stats["analyses"]}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     st.stop()
+
 # ============================================================
 # INPUT DATA (UPLOAD CSV/XLSX)
 # ============================================================
