@@ -349,22 +349,18 @@ if st.session_state.page == "beranda":
 
     a, b, c = st.columns(3)
     with a:
-        # st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[key=btn_hasil]\').click()">📊 Hasil Analisis Terakhir</button>', unsafe_allow_html=True)
-        if st.button("📊 Hasil Analisis Terakhir", key="btn_hasil"):
+        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=primary]\').click()">📊 Hasil Analisis Terakhir</button>', unsafe_allow_html=True)
+        if st.button("📊 Hasil Analisis Terakhir", key="btn_hasil", help="trigger"):
             st.session_state.page = "hasil"
-            st.rerun()
     with b:
-        # st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[key=btn_rk4]\').click()">❔ Mengapa RK4?</button>', unsafe_allow_html=True)
-        if st.button("❔ Mengapa RK4?", key="btn_rk4"):
+        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=secondary]\').click()">❔ Mengapa RK4?</button>', unsafe_allow_html=True)
+        if st.button("❔ Mengapa RK4?", key="btn_rk4", help="trigger"):
              st.session_state.page = "rk4info"
-             st.rerun()
     with c:
-        # st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[key=btn_reset]\').click()">🔄 Reset Hasil</button>', unsafe_allow_html=True)
-        if st.button("🔄 Reset Hasil", key="btn_reset"):
+        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=tertiary]\').click()">🔄 Reset Hasil</button>', unsafe_allow_html=True)
+        if st.button("🔄 Reset Hasil", key="btn_reset", help="trigger"):
              st.session_state.last_result = None
              st.session_state.last_context = None
-             st.session_state.show_result_actions = False
-             st.session_state.show_result_actions_personal = False
              st.success("Riwayat berhasil dibersihkan.")
 
 
