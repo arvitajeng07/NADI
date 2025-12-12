@@ -253,46 +253,55 @@ def render_warning_inline(duration_ms=1000):
 # BERANDA / LANDING
 # ============================================================
 if st.session_state.page == "beranda":
+
     st.markdown("<div class='big-nadi-title'>❤️ NADI : Numeric Analysis of Diastolic & Systolic</div>", unsafe_allow_html=True)
     st.markdown(
         "<div class='nadi-desc'><b>Adalah ruang sederhana untuk membaca alur tekanan darah Anda melalui pendekatan komputasi.</b><br>"
-        "Dengan memanfaatkan metode <b>RK4</b> dan proses pengkodingan yang turut terbantu oleh kecerdasan buatan, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>"
-        "<b>NADI bukan alat diagnosis medis</b>. Hasil yang ditampilkan hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang. Biarkan NADI membaca aliran kesehatan Anda.</i></div>",
+        "Dengan memanfaatkan metode <b>RK4</b>, <b>NADI</b> menghadirkan analisis yang ringan, intuitif, dan mudah dipahami.<br><br>"
+        "<b>NADI bukan alat diagnosis medis</b>. Hasil hanya gambaran komputasi, bukan pengganti konsultasi tenaga kesehatan profesional.<br><br><i>Selamat datang.</i></div>",
         unsafe_allow_html=True
     )
 
     c1, c2 = st.columns(2)
+
+    # Card kiri
     with c1:
         st.markdown("<div class='glass'><h3 style='color:var(--primary-1)'>Input Data (Puskesmas / Klinik)</h3>"
-                    "<p style='color:var(--muted)'>Upload CSV/XLSX berisi banyak pasien. Sistem akan memproses tiap pasien, mendeteksi hipertensi/hipotensi, dan memprediksi nilai berikutnya.</p>"
+                    "<p style='color:var(--muted)'>Upload CSV/XLSX berisi banyak pasien untuk diproses otomatis.</p>"
                     "<div class='spacer'></div>", unsafe_allow_html=True)
         if st.button("➡ Masuk ke Input Data", key="go_input"):
             st.session_state.page = "input"
         st.markdown("</div>", unsafe_allow_html=True)
 
+    # Card kanan
     with c2:
         st.markdown("<div class='glass'><h3 style='color:var(--primary-1)'>Analisis Personal</h3>"
-                    "<p style='color:var(--muted)'>Masukkan 1–10 data tensi untuk analisis dan prediksi personal.</p>"
+                    "<p style='color:var(--muted)'>Masukkan 1–10 data tensi untuk prediksi personal.</p>"
                     "<div class='spacer'></div>", unsafe_allow_html=True)
         if st.button("➡ Masuk ke Personal", key="go_personal"):
             st.session_state.page = "personal"
         st.markdown("</div>", unsafe_allow_html=True)
 
-    a,b,c = st.columns(3)
-    with a:
+    st.markdown("---")
+
+    # Tombol navigasi bawah
+    nav1, nav2, nav3 = st.columns(3)
+
+    with nav1:
         if st.button("📊 Hasil Analisis Terakhir"):
             st.session_state.page = "hasil"
-    with b:
+
+    with nav2:
         if st.button("❔ Mengapa RK4?"):
             st.session_state.page = "rk4info"
-    with c:
+
+    with nav3:
         if st.button("🔄 Reset Hasil"):
             st.session_state.last_result = None
             st.session_state.last_context = None
-            st.success("Riwayat berhasil dibersihkan.")
+            st.success("Riwayat dibersihkan.")
 
-    st.markdown("---")
-    st.subheader("Contoh Template Data (Upload)")
+    st.subheader("Contoh Template Data")
     sample_df = pd.DataFrame({
         "Nama": ["Budi","Budi","Siti","Siti"],
         "Tanggal": [
@@ -304,9 +313,11 @@ if st.session_state.page == "beranda":
         "Systolic": [120, 145, 130, 170],
         "Diastolic": [80,  95,  85, 105]
     })
+
     st.dataframe(sample_df)
     csv = sample_df.to_csv(index=False).encode("utf-8")
     st.download_button("Download template CSV", csv, "template_tensi.csv", "text/csv")
+
     st.stop()
 
 # ============================================================
