@@ -1,4 +1,4 @@
-# app.py — NADI (RK4) — FINAL (Warning super-dramatic inline + Normal gemoy overlay)
+# app.py — NADI (RK4) — FINAL (Audio fix: play() method)
 # ============================================================
 
 import streamlit as st
@@ -149,7 +149,7 @@ def detect_anomaly_df(df,
 
 # -----------------------
 # RENDER NORMAL — INLINE FULLSCREEN (overlay via st.markdown)
-# Tambahkan click_id untuk memicu rerun Streamlit
+# DENGAN PERBAIKAN audioEl.play()
 # -----------------------
 def render_normal_overlay(datauri=None, duration_ms=1500, click_id=""):
     import time
@@ -210,7 +210,14 @@ def render_normal_overlay(datauri=None, duration_ms=1500, click_id=""):
     # SCRIPT HACK: Trigger tombol tersembunyi setelah durasi
     script = f"""
     <script>
-        // Hapus pop-up setelah 500ms (agar tidak bocor saat Streamlit reruns)
+        // PERBAIKAN: Coba memutar audio secara eksplisit
+        var audioEl = document.querySelector('#normal-root-{uid} audio');
+        if (audioEl) {{
+            // Coba play, tangani jika browser memblokir (Promise rejection)
+            audioEl.play().catch(e => console.log("Audio Play Gagal:", e));
+        }}
+
+        // Panggil tombol tersembunyi setelah durasi singkat
         setTimeout(function() {{
             var el = document.getElementById("normal-root-{uid}");
             if (el && el.parentNode) {{
@@ -232,7 +239,7 @@ def render_normal_overlay(datauri=None, duration_ms=1500, click_id=""):
 
 # -----------------------
 # RENDER WARNING — INLINE FULLSCREEN (super dramatic) + siren (1s)
-# Tambahkan click_id untuk memicu rerun Streamlit
+# DENGAN PERBAIKAN audioEl.play()
 # -----------------------
 def render_warning_inline(duration_ms=1200, click_id=""):
     import time
@@ -292,7 +299,14 @@ def render_warning_inline(duration_ms=1200, click_id=""):
     # SCRIPT HACK: Trigger tombol tersembunyi setelah durasi
     script = f"""
     <script>
-        // Hapus pop-up setelah 500ms (agar tidak bocor saat Streamlit reruns)
+        // PERBAIKAN: Coba memutar audio secara eksplisit
+        var audioEl = document.querySelector('#warn-root-{uid} audio');
+        if (audioEl) {{
+            // Coba play, tangani jika browser memblokir (Promise rejection)
+            audioEl.play().catch(e => console.log("Audio Play Gagal:", e));
+        }}
+
+        // Panggil tombol tersembunyi setelah durasi singkat
         setTimeout(function() {{
             var el = document.getElementById("warn-root-{uid}");
             if (el && el.parentNode) {{
@@ -349,18 +363,19 @@ if st.session_state.page == "beranda":
 
     a, b, c = st.columns(3)
     with a:
-        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=primary]\').click()">📊 Hasil Analisis Terakhir</button>', unsafe_allow_html=True)
-        if st.button("📊 Hasil Analisis Terakhir", key="btn_hasil", help="trigger"):
+        if st.button("📊 Hasil Analisis Terakhir", key="btn_hasil"):
             st.session_state.page = "hasil"
+            st.rerun()
     with b:
-        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=secondary]\').click()">❔ Mengapa RK4?</button>', unsafe_allow_html=True)
-        if st.button("❔ Mengapa RK4?", key="btn_rk4", help="trigger"):
+        if st.button("❔ Mengapa RK4?", key="btn_rk4"):
              st.session_state.page = "rk4info"
+             st.rerun()
     with c:
-        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=tertiary]\').click()">🔄 Reset Hasil</button>', unsafe_allow_html=True)
-        if st.button("🔄 Reset Hasil", key="btn_reset", help="trigger"):
+        if st.button("🔄 Reset Hasil", key="btn_reset"):
              st.session_state.last_result = None
              st.session_state.last_context = None
+             st.session_state.show_result_actions = False
+             st.session_state.show_result_actions_personal = False
              st.success("Riwayat berhasil dibersihkan.")
 
 
