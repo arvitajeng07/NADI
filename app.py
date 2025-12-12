@@ -456,7 +456,7 @@ if st.session_state.page == "input":
                         st.markdown(f"- {msg}")
                 
                 st.markdown("---")
-                if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result")
+                if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result"):
                     st.session_state.page = "beranda"
                     st.rerun()
 
@@ -547,7 +547,7 @@ if st.session_state.page == "personal":
         st.session_state.last_context = {"mode":"Personal", "name":name}
 
         st.markdown("---")
-        if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result")
+        if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result"):
              st.session_state.page = "beranda"
              st.rerun()
 
