@@ -44,11 +44,36 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+st.markdown(
+    """
+    <style>
+    button.bigglass {
+    background: rgba(255, 255, 255, 0.55) !important;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.7) !important;
+    padding: 18px 32px !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    border-radius: 16px !important;
+    color: #0b63d9 !important;
+    box-shadow: 0 4px 18px rgba(11,99,217,0.18);
+    transition: all 0.2s ease-in-out;
+    }
+
+    button.bigglass:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 28px rgba(11,99,217,0.25);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 # -----------------------
 # AUDIO HELPERS (siren + ting)
 # -----------------------
-def generate_siren_wav(duration=1.0, sr=44100):
+def generate_siren_wav(duration=3.0, sr=44100):
     # siren with pitch modulation (short)
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     mod = 0.5 * (1 + np.sin(2 * np.pi * 2.2 * t))  # faster mod for urgency
@@ -63,7 +88,7 @@ def generate_siren_wav(duration=1.0, sr=44100):
     buf.seek(0)
     return buf.read()
 
-def generate_ting_wav(duration=0.45, sr=44100):
+def generate_ting_wav(duration=1.0, sr=44100):
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     tone1 = 0.7 * np.sin(2 * np.pi * 1400 * t) * np.linspace(1, 0, len(t))
     tone2 = 0.5 * np.sin(2 * np.pi * 1800 * t) * np.linspace(1, 0, len(t))
@@ -278,18 +303,22 @@ if st.session_state.page == "beranda":
             st.session_state.page = "personal"
         st.markdown("</div>", unsafe_allow_html=True)
 
-    a,b,c = st.columns(3)
+    a, b, c = st.columns(3)
     with a:
-        if st.button("📊 Hasil Analisis Terakhir"):
+        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=primary]\').click()">📊 Hasil Analisis Terakhir</button>', unsafe_allow_html=True)
+        if st.button("📊 Hasil Analisis Terakhir", key="btn_hasil", help="trigger"):
             st.session_state.page = "hasil"
     with b:
-        if st.button("❔ Mengapa RK4?"):
-            st.session_state.page = "rk4info"
+        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=secondary]\').click()">❔ Mengapa RK4?</button>', unsafe_allow_html=True)
+        if st.button("❔ Mengapa RK4?", key="btn_rk4", help="trigger"):
+             st.session_state.page = "rk4info"
     with c:
-        if st.button("🔄 Reset Hasil"):
-            st.session_state.last_result = None
-            st.session_state.last_context = None
-            st.success("Riwayat berhasil dibersihkan.")
+        st.markdown('<button class="bigglass" onclick="document.querySelector(\'button[kind=tertiary]\').click()">🔄 Reset Hasil</button>', unsafe_allow_html=True)
+        if st.button("🔄 Reset Hasil", key="btn_reset", help="trigger"):
+             st.session_state.last_result = None
+             st.session_state.last_context = None
+             st.success("Riwayat berhasil dibersihkan.")
+
 
     st.markdown("---")
     st.subheader("Contoh Template Data (Upload)")
