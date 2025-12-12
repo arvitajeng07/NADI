@@ -1,4 +1,7 @@
-# app.py — NADI (RK4) — FINAL with Close Buttons + Visitor Stats
+# app.py — NADI (RK4) — ULTRA-FLEXIBLE VERSION
+# ============================================================
+# Versi ini menambahkan autodetect_columns (Mode C - Ultra-Fleksible)
+# dan parsing format tensi gabungan seperti "120/80" dll.
 # ============================================================
 
 import streamlit as st
@@ -12,6 +15,7 @@ from datetime import datetime, timedelta
 import streamlit.components.v1 as components
 import time
 import os
+import re
 
 # ============================================================
 # PENGUNJUNG & ANALISIS TRACKING
@@ -143,7 +147,216 @@ def rk4_predict_series(arr):
     arr = list(arr)
     if len(arr) < 2:
         return None
+    # make sure we ignore NaNs at end
+    arr = [x for x in arr if not pd.isna(x)]
+    if len(arr) < 2:
+        return None
     return rk4_predict_value(arr[-1], arr[-2])
+
+# ============================================================
+# UTILITY: Parsing tensi dari string seperti "120/80" atau "120;80"
+# ============================================================
+
+def parse_systolic_diastolic_from_cell(cell):
+    """
+    Jika cell adalah string yang mengandung pola 120/80, 120-80, 120 ; 80, atau '120 80' -> return (systolic, diastolic)
+    Jika tidak match -> return None
+    """
+    if pd.isna(cell):
+        return None
+    if isinstance(cell, (int, float, np.integer, np.floating)):
+        return None
+    s = str(cell).strip()
+    # cari pola angka/angka
+    m = re.search(r'(\d{2,3})\s*[\/\-\;\,]\s*(\d{2,3})', s)
+    if m:
+        try:
+            s1 = int(m.group(1))
+            d1 = int(m.group(2))
+            return s1, d1
+        except:
+            return None
+    # kadang dipisah spasi: "120 80"
+    m2 = re.search(r'^\s*(\d{2,3})\s+(\d{2,3})\s*$', s)
+    if m2:
+        try:
+            return int(m2.group(1)), int(m2.group(2))
+        except:
+            return None
+    return None
+
+# ============================================================
+# AUTO-DETECT COLUMNS (MODE C: Ultra-Flexible)
+# ============================================================
+
+def autodetect_columns(df):
+    """
+    Mode C (Ultra Fleksibel)
+    - Jika ada kolom gabungan berisi "120/80" -> parse jadi Systolic & Diastolic
+    - Deteksi nama kolom Nama, Systolic, Diastolic dari berbagai bahasa / singkatan
+    - Jika tidak ada nama -> buat 'Pasien 1..n'
+    - Jika tidak ada cukup kolom numerik -> raise ValueError
+    """
+    df = df.copy()
+    # bersihkan header whitespace
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # buang baris kosong sepenuhnya
+    df = df.dropna(how="all")
+    if df.shape[0] == 0:
+        raise ValueError("File kosong setelah membersihkan baris kosong.")
+
+    # cek apakah ada kolom yang berisi pola "120/80" -> parse
+    parsed_any = False
+    for c in df.columns:
+        sample_vals = df[c].dropna().astype(str).head(10).tolist()
+        # jika sebagian besar sample match pattern, parse seluruh kolom
+        matches = [1 for v in sample_vals if parse_systolic_diastolic_from_cell(v) is not None]
+        if len(sample_vals) > 0 and len(matches) >= max(1, len(sample_vals)//2):
+            # buat dua kolom baru
+            s_vals = []
+            d_vals = []
+            for v in df[c]:
+                parsed = parse_systolic_diastolic_from_cell(v)
+                if parsed is not None:
+                    s_vals.append(parsed[0])
+                    d_vals.append(parsed[1])
+                else:
+                    s_vals.append(np.nan)
+                    d_vals.append(np.nan)
+            df[f"{c}_Systolic"] = s_vals
+            df[f"{c}_Diastolic"] = d_vals
+            parsed_any = True
+
+    # normalize lower-case mapping
+    cols_map = {c.lower(): c for c in df.columns}
+
+    name_keys = ["nama", "name", "pasien", "patient", "id", "orang", "user"]
+    sys_keys  = ["sys","systolic","sistolik","sistole","atas","upper","sistolic","sistol"]
+    dia_keys  = ["dia","diastolic","diastolik","bawah","lower","dias","distolic","diastole"]
+
+    # find name column
+    name_col = None
+    for k in name_keys:
+        for lower, orig in cols_map.items():
+            if k in lower:
+                name_col = orig
+                break
+        if name_col:
+            break
+
+    # find systolic
+    sys_col = None
+    for k in sys_keys:
+        for lower, orig in cols_map.items():
+            if k in lower and "systolic" in orig.lower() or k in lower and re.search(r'\b%s\b' % re.escape(k), lower):
+                sys_col = orig
+                break
+        if sys_col:
+            break
+
+    # alternative: direct contains
+    if sys_col is None:
+        for lower, orig in cols_map.items():
+            for k in sys_keys:
+                if k in lower:
+                    sys_col = orig
+                    break
+            if sys_col:
+                break
+
+    # find diastolic
+    dia_col = None
+    for k in dia_keys:
+        for lower, orig in cols_map.items():
+            if k in lower and "diastolic" in orig.lower() or k in lower and re.search(r'\b%s\b' % re.escape(k), lower):
+                dia_col = orig
+                break
+        if dia_col:
+            break
+
+    if dia_col is None:
+        for lower, orig in cols_map.items():
+            for k in dia_keys:
+                if k in lower:
+                    dia_col = orig
+                    break
+            if dia_col:
+                break
+
+    # If parsing produced explicit *_Systolic and *_Diastolic, prefer them
+    systolic_candidates = [c for c in df.columns if c.lower().endswith("_systolic") or c.lower() == "systolic"]
+    diastolic_candidates = [c for c in df.columns if c.lower().endswith("_diastolic") or c.lower() == "diastolic"]
+
+    if systolic_candidates and not sys_col:
+        sys_col = systolic_candidates[0]
+    if diastolic_candidates and not dia_col:
+        dia_col = diastolic_candidates[0]
+
+    # If still not found, find numeric columns
+    def is_numeric_series(s):
+        try:
+            pd.to_numeric(s.dropna().head(20))
+            return True
+        except:
+            return False
+
+    if sys_col is None or dia_col is None:
+        numeric_cols = []
+        for c in df.columns:
+            if is_numeric_series(df[c]):
+                numeric_cols.append(c)
+        # remove name if accidentally numeric and used as id
+        if name_col in numeric_cols:
+            numeric_cols = [c for c in numeric_cols if c != name_col]
+
+        # If there are at least two numeric columns, pick two with highest variance (or first two)
+        if len(numeric_cols) >= 2:
+            # prefer columns with 'sys' or 'dia' in name
+            if sys_col is None:
+                for c in numeric_cols:
+                    if any(k in c.lower() for k in sys_keys):
+                        sys_col = c
+                        break
+            if dia_col is None:
+                for c in numeric_cols:
+                    if any(k in c.lower() for k in dia_keys):
+                        dia_col = c
+                        break
+
+            if sys_col is None or dia_col is None:
+                # choose two numeric columns sorted by variance (likely systolic more variable)
+                variances = [(c, np.nanvar(pd.to_numeric(df[c], errors='coerce').astype(float).dropna())) for c in numeric_cols]
+                variances = sorted(variances, key=lambda x: - (x[1] if not np.isnan(x[1]) else 0))
+                if len(variances) >= 2:
+                    if sys_col is None:
+                        sys_col = variances[0][0]
+                    if dia_col is None:
+                        dia_col = variances[1][0]
+
+    # If still missing, raise
+    if sys_col is None or dia_col is None:
+        raise ValueError("Tidak ditemukan dua kolom numerik yang jelas untuk Systolic & Diastolic. Coba upload file dengan setidaknya dua kolom angka atau kolom dengan format '120/80'.")
+
+    # Ensure name column exists
+    if name_col is None:
+        df["Nama"] = [f"Pasien {i+1}" for i in range(len(df))]
+        name_col = "Nama"
+
+    # Convert and rename
+    df[sys_col] = pd.to_numeric(df[sys_col], errors="coerce")
+    df[dia_col] = pd.to_numeric(df[dia_col], errors="coerce")
+
+    # drop rows where both systolic & diastolic are NaN (no useful info)
+    df = df.dropna(subset=[sys_col, dia_col], how="all").reset_index(drop=True)
+
+    df = df.rename(columns={sys_col: "Systolic", dia_col: "Diastolic", name_col: "Nama"})
+
+    # Final: ensure Systolic/Diastolic exist
+    if "Systolic" not in df.columns or "Diastolic" not in df.columns:
+        raise ValueError("Gagal mengidentifikasi kolom Systolic / Diastolic setelah proses parsing.")
+
+    return df
 
 # ============================================================
 # DETEKSI ANOMALI
@@ -304,6 +517,7 @@ def render_warning_inline(duration_ms=1600):
     """
 
     st.markdown(html, unsafe_allow_html=True)
+
 # ============================================================
 # BERANDA / LANDING PAGE
 # ============================================================
@@ -356,25 +570,10 @@ if st.session_state.page == "beranda":
     """, unsafe_allow_html=True)
 
     # ============================================================
-    # TEMPLATE DATA
+    # TEMPLATE DATA (dihapus - tidak wajib lagi)
     # ============================================================
 
-    st.subheader("Contoh Template Data")
-    sample_df = pd.DataFrame({
-        "Nama": ["Budi","Budi","Siti","Siti"],
-        "Tanggal": [
-            datetime.now().date()-timedelta(days=3),
-            datetime.now().date()-timedelta(days=1),
-            datetime.now().date()-timedelta(days=2),
-            datetime.now().date()
-        ],
-        "Systolic": [120, 145, 130, 170],
-        "Diastolic": [80,  95,  85, 105]
-    })
-
-    st.dataframe(sample_df)
-    csv = sample_df.to_csv(index=False).encode("utf-8")
-    st.download_button("Download template CSV", csv, "template_tensi.csv", "text/csv")
+    st.write("Upload file CSV/XLSX tanpa harus mengikuti template kolom — NADI akan mencoba menyesuaikan secara otomatis.")
 
     st.stop()
 
@@ -386,7 +585,7 @@ if st.session_state.page == "beranda":
 if st.session_state.page == "input":
     st.header("📁 Analisis Data Populasi (Upload CSV / XLSX)")
 
-    uploaded = st.file_uploader("Upload CSV/XLSX (minimal kolom: Nama, Systolic, Diastolic)", type=["csv","xlsx"])
+    uploaded = st.file_uploader("Upload CSV/XLSX (cukup berisi kolom angka atau kolom '120/80')", type=["csv","xlsx"])
     run = st.button("Analisis (RK4)")
 
     if uploaded is not None:
@@ -399,14 +598,17 @@ if st.session_state.page == "input":
             st.error(f"Gagal membaca file: {e}")
             st.stop()
 
-        df.columns = [c.strip() for c in df.columns]
+        # strip whitespace column names
+        df.columns = [str(c).strip() for c in df.columns]
 
-        st.info("Preview 50 baris pertama:")
-        st.dataframe(df.head(50))
+        st.info("Preview 20 baris pertama:")
+        st.dataframe(df.head(20))
 
-        required = {"Nama", "Systolic", "Diastolic"}
-        if not required.issubset(df.columns):
-            st.error(f"Kolom minimal harus ada: {sorted(required)}")
+        # AUTO-DETECT kolom (Mode C)
+        try:
+            df = autodetect_columns(df)
+        except Exception as e:
+            st.error(f"Gagal mendeteksi kolom: {e}")
             st.stop()
 
         # handle tanggal
@@ -443,7 +645,11 @@ if st.session_state.page == "input":
                     alert_needed = True
                     alert_names.append(name)
 
-            result = pd.concat(parts, ignore_index=True)
+            if parts:
+                result = pd.concat(parts, ignore_index=True)
+            else:
+                result = pd.DataFrame(columns=["Nama","Tanggal","Systolic","Diastolic","Prediksi_Systolic","Prediksi_Diastolic","Hipertensi","Hipotensi","Anom_Total"])
+
             st.subheader("Hasil Analisis")
             st.dataframe(result)
 
@@ -454,6 +660,20 @@ if st.session_state.page == "input":
             stats = read_stats()
             stats["analyses"] += 1
             write_stats(stats)
+
+            # Tombol download CSV & XLSX
+            csv = result.to_csv(index=False).encode("utf-8")
+            st.download_button("Download hasil (CSV)", csv, f"hasil_nadi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", "text/csv")
+
+            try:
+                out = BytesIO()
+                with pd.ExcelWriter(out, engine="xlsxwriter") as writer:
+                    result.to_excel(writer, index=False, sheet_name="Hasil")
+                    writer.save()
+                out.seek(0)
+                st.download_button("Download hasil (XLSX)", out, f"hasil_nadi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            except Exception:
+                pass
 
             if alert_needed:
                 st.error(f"🚨 Anomali terdeteksi pada: {', '.join(alert_names[:8])}")
@@ -469,6 +689,7 @@ if st.session_state.page == "input":
         st.session_state.page = "beranda"
 
     st.stop()
+
 # ============================================================
 # PERSONAL ANALYSIS
 # ============================================================
