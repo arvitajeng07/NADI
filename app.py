@@ -454,6 +454,11 @@ if st.session_state.page == "input":
                     st.markdown("**Catatan pemrosesan (beberapa entry dilewati / error):**")
                     for msg in processing_errors:
                         st.markdown(f"- {msg}")
+                
+                st.markdown("---")
+                if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result")
+                    st.session_state.page = "beranda"
+                    st.rerun()
 
             except Exception as e:
                 st.error(f"Terjadi error saat analisis: {e}")
@@ -540,6 +545,11 @@ if st.session_state.page == "personal":
 
         st.session_state.last_result = dfp
         st.session_state.last_context = {"mode":"Personal", "name":name}
+
+        st.markdown("---")
+        if st.button("⬅ Kembali ke Beranda", key="back_from_personal_result")
+             st.session_state.page = "beranda"
+             st.rerun()
 
     if st.button("⬅ Kembali"):
         st.session_state.page = "beranda"
