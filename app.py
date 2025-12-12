@@ -670,10 +670,13 @@ if st.session_state.page == "personal":
             st.stop()
 
         dfp = pd.DataFrame({
-            "Nama":[name]*int(n),
-            "Tanggal":[pd.Timestamp(datetime.now().date() - timedelta(days=(int(n)-1-i))) for i in range(int(n))],
-            "Systolic":systolic,
-            "Diastolic":diastolic
+            "Nama": [name] * int(n),
+            "Tanggal": [
+                pd.Timestamp(datetime.now().date() - timedelta(days=(int(n)-1-i))) 
+                for i in range(int(n))
+            ],
+            "Systolic": systolic,
+            "Diastolic": diastolic
         })
 
         dfp = detect_anomaly_df(dfp)
@@ -692,35 +695,34 @@ if st.session_state.page == "personal":
         st.dataframe(dfp)
 
         # Grafik tensi
-        fig, ax = plt.subplots(figsize=(9,3))
+        fig, ax = plt.subplots(figsize=(9, 3))
         ax.plot(dfp["Tanggal"], dfp["Systolic"], marker="o", label="Systolic")
         ax.plot(dfp["Tanggal"], dfp["Diastolic"], marker="o", label="Diastolic")
 
         if pred_s is not None:
             nd = dfp["Tanggal"].iloc[-1] + pd.Timedelta(days=1)
-            ax.scatter([nd],[pred_s], marker='D', s=80)
-            ax.scatter([nd],[pred_d], marker='D', s=80)
+            ax.scatter([nd], [pred_s], marker="D", s=80)
+            ax.scatter([nd], [pred_d], marker="D", s=80)
 
         ax.set_title(f"Tensi - {name}")
         ax.legend()
         st.pyplot(fig)
 
-        # anomaly check
         if dfp["Anom_Total"].iloc[-1]:
             st.error("⚠️ Terdeteksi hipertensi / hipotensi!")
             render_warning_inline()
         else:
+            st.success("✔ Datamu Normal. Jaga kesehatan ya!")
             render_normal_overlay()
-            st.success("✔ Datamu Normal. Jaga kesehatan yaaa!!")
 
         if pred_s is not None:
-            st.markdown(f"**Prediksi RK4** → Sistolik: **{pred_s:.2f}**, Diastolik: **{pred_d:.2f}**")
+            st.markdown(
+                f"**Prediksi RK4** → Sistolik: **{pred_s:.2f}**, Diastolik: **{pred_d:.2f}**"
+            )
 
-        # simpan hasil
         st.session_state.last_result = dfp
-        st.session_state.last_context = {"mode":"Personal", "name":name}
+        st.session_state.last_context = {"mode": "Personal", "name": name}
 
-        # update statistik
         stats = read_stats()
         stats["analyses"] += 1
         write_stats(stats)
@@ -731,7 +733,7 @@ if st.session_state.page == "personal":
     st.stop()
 
 # ============================================================
-# RESULTS (LAST)
+# LAST RESULT PAGE
 # ============================================================
 
 if st.session_state.page == "hasil":
@@ -740,7 +742,7 @@ if st.session_state.page == "hasil":
     if st.session_state.last_result is None:
         st.info("Belum ada hasil. Lakukan analisis pada menu Input Data atau Personal.")
     else:
-        st.write("Context:", st.session_state.last_context)
+        st.write("Konteks Analisis:", st.session_state.last_context)
         st.dataframe(st.session_state.last_result)
 
         df_show = st.session_state.last_result
@@ -749,9 +751,8 @@ if st.session_state.page == "hasil":
             total_anom = int(df_show["Anom_Total"].sum())
             st.markdown(f"**Total hipertensi/hipotensi terdeteksi: {total_anom}**")
 
-        # additional quick metrics
         if "Prediksi_Systolic" in df_show.columns:
-            preds = df_show[["Nama","Prediksi_Systolic","Prediksi_Diastolic"]].dropna(how="all")
+            preds = df_show[["Nama", "Prediksi_Systolic", "Prediksi_Diastolic"]].dropna(how="all")
             if not preds.empty:
                 st.markdown("**Prediksi berikutnya (ringkasan):**")
                 st.dataframe(preds.head(10))
@@ -762,7 +763,7 @@ if st.session_state.page == "hasil":
     st.stop()
 
 # ============================================================
-# WHY RK4 PAGE
+# RK4 INFO PAGE
 # ============================================================
 
 if st.session_state.page == "rk4info":
